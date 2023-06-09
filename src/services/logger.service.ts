@@ -1,5 +1,5 @@
-import pino from "pino";
-import { LogLevel } from "../types/pino-log-structure.type";
+import { pino } from 'pino';
+import { LogLevel } from "../types/pino-log-structure.type.js";
 
 export class Logger {
     private readonly logger: pino.Logger;

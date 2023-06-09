@@ -1,4 +1,4 @@
-import { FunctionURLResult } from "../types/function-url-event.type";
+import { FunctionURLResult } from "../types/function-url-event.type.js";
 
 export const httpResult = <T>(statusCode: number, body: T): FunctionURLResult  => {
     return {
