@@ -10,6 +10,7 @@ export const whatsappWebhookHandler: FunctionURLHandler = async (event: Function
         return httpResult(200, { message: "OK" });
     }
     else {
+        logger.info("No body provided", event);
         return httpResult(400, { message: "No body provided" });
     }
 };
