@@ -22,4 +22,4 @@ jobs:
 
       - name: cd
         run: |
-          serverless deploy
+          npm run deploy
