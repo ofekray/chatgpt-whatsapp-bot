@@ -18,7 +18,7 @@ jobs:
 
       - name: ci
         run: |
-          npm ci --only=prod
+          npm ci
 
       - name: cd
         run: |
