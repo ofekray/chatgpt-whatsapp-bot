@@ -1,16 +1,8 @@
-import { Context } from "aws-lambda";
-import { FunctionURLEvent, FunctionURLHandler } from "./types/function-url-event.type.js";
-import { httpResult } from "./services/http-result.service.js";
-import { logger } from "./services/logger.service.js";
+import middy from "@middy/core";
+import httpRouterHandler from "@middy/http-router";
+import { routes } from "./routes.js";
+import { FunctionURLHandler } from "./types/function-url-event.type.js";
 
-export const whatsappWebhookHandler: FunctionURLHandler = async (event: FunctionURLEvent, context: Context) => {
-    if (event.body) {
-        const body = JSON.parse(event.body);
-        logger.info("whatsappWebhookHandler", body);
-        return httpResult(200, { message: "OK" });
-    }
-    else {
-        logger.info("No body provided", event);
-        return httpResult(400, { message: "No body provided" });
-    }
-};
+
+export const webhookHandler: FunctionURLHandler = middy()
+    .handler(httpRouterHandler(routes));

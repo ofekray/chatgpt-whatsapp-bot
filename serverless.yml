@@ -5,13 +5,18 @@ provider:
     runtime: nodejs18.x
     lambdaHashingVersion: 20201221
     memorySize: 1024
-    timeout: 1
+    timeout: 60
     environment:
         LOG_LEVEL: info
+        WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${ssm:/whatsapp-webhook-verify-token}
+        WHATSAPP_FACEBOOK_APP_SECRET: ${ssm:/whatsapp-facebook-app-secret}
+        WHATSAPP_API_TOKEN: ${ssm:/whatsapp-api-token}
+        WHATSAPP_BUSINESS_NUMBER: ${ssm:/whatsapp-business-number}
+        WHATSAPP_API_BASE_URL: ${ssm:/whatsapp-api-base-url}
 
 functions:
-    whatsappWebhook:
-        handler: src/handler.whatsappWebhookHandler
+    webhookHandler:
+        handler: src/handler.webhookHandler
         url: true
 
 plugins:

@@ -1,8 +1,6 @@
-import { FunctionURLResult } from "../types/function-url-event.type.js";
-
-export const httpResult = <T>(statusCode: number, body: T): FunctionURLResult  => {
+export const httpResult = <T>(statusCode: number, body?: T)  => {
     return {
         statusCode,
-        body: JSON.stringify(body)
+        body: body ? (typeof body === "string" ? body : JSON.stringify(body)) : undefined
     };
 };

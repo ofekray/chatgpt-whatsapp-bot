@@ -1,7 +1,7 @@
 import { pino } from 'pino';
 import { LogLevel } from "../types/pino-log-structure.type.js";
 
-export class Logger {
+class Logger {
     private readonly logger: pino.Logger;
     constructor() {
         this.logger = pino({
@@ -39,6 +39,3 @@ export class Logger {
 }
 
 export const logger = new Logger();
-
-logger.info("Logger initialized");
-logger.info("Ofek Test", { a: 1, z: ["aaa"] });
