@@ -6,19 +6,24 @@ import { logger } from "./logger.service.js";
 
 class WhatsappApi {
     async postTextMessage(to: string, text: string) {
-        const body: TextMessageRequestBody = {
-            messaging_product: "whatsapp",
-            recipient_type: "individual",
-            to,
-            type: WhatsappMessageTypesEnum.Text,
-            text: {
-                preview_url: false,
-                body: text,
-            }
-        };
-
-        
-        await this.sendRequest(body);
+        try {
+            const body: TextMessageRequestBody = {
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to,
+                type: WhatsappMessageTypesEnum.Text,
+                text: {
+                    preview_url: false,
+                    body: text,
+                }
+            };
+    
+            
+            await this.sendRequest(body);
+        }
+        catch(error) {
+            logger.error("Error sending whatsapp message", { error });
+        }
     }
 
     private async sendRequest<T extends MessageRequestBody<WhatsappMessageTypesEnum>>(body: T) {

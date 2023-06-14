@@ -12,7 +12,7 @@ export const routes: FunctionURLRoute[] = [
     {
         method: "POST",
         path: "/whatsapp",
-        handler: whatsappHandler.handleMessage.bind(whatsappHandler)
+        handler: whatsappHandler.handleWebhookMessage.bind(whatsappHandler)
     },
     {
         method: "ANY",

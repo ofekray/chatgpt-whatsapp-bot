@@ -5,21 +5,48 @@ provider:
     runtime: nodejs18.x
     lambdaHashingVersion: 20201221
     memorySize: 1024
-    timeout: 60
     environment:
-        LOG_LEVEL: info
+        LOG_LEVEL: debug
         WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${ssm:/whatsapp-webhook-verify-token}
         WHATSAPP_FACEBOOK_APP_SECRET: ${ssm:/whatsapp-facebook-app-secret}
         WHATSAPP_API_TOKEN: ${ssm:/whatsapp-api-token}
         WHATSAPP_BUSINESS_NUMBER: ${ssm:/whatsapp-business-number}
         WHATSAPP_API_BASE_URL: ${ssm:/whatsapp-api-base-url}
+        OPENAI_ORG: ${ssm:/openai-org}
+        OPENAI_API_KEY: ${ssm:/openai-api-key}
+        WHATSAPP_MESSAGE_QUEUE_URL:
+            Ref: WhatsappMessageQueue
+    iamRoleStatements:
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource:
+            - Fn::GetAtt:
+                - WhatsappMessageQueue
+                - Arn
 
 functions:
     webhookHandler:
         handler: src/handler.webhookHandler
+        timeout: 60
         url: true
+    queueHandler:
+        handler: src/handler.queueHandler
+        timeout: 300
+        events:
+        - sqs:
+            arn:
+                Fn::GetAtt:
+                - WhatsappMessageQueue
+                - Arn
 
 plugins:
     - serverless-plugin-typescript
 
 resources:
+  Resources:
+    WhatsappMessageQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: whatsapp-message-queue
+        VisibilityTimeout: 300

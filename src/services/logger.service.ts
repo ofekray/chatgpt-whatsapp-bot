@@ -1,4 +1,5 @@
 import { pino } from 'pino';
+import { serializeError } from 'serialize-error';
 import { LogLevel } from "../types/pino-log-structure.type.js";
 
 class Logger {
@@ -33,8 +34,23 @@ class Logger {
     private log<T extends object>(level: LogLevel, message: string, additionalInfo?: T): void {
         this.logger[level]({
             message,
-            additionalInfo,
+            additionalInfo: additionalInfo ? this.serializeAdditionalInfo(additionalInfo) : undefined,
         });
+    }
+
+    private serializeAdditionalInfo<T extends object>(info: object): T {
+        let result: any = {};
+
+        for (const [key, value] of Object.entries(info)) {
+            if (value instanceof Error) {
+                result[key] = serializeError(value);
+            }
+            else {
+                result[key] = value;
+            }
+        }
+
+        return result;
     }
 }
 
