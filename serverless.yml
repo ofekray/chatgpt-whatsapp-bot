@@ -25,6 +25,10 @@ provider:
                 - WhatsappMessageQueue
                 - Arn
 
+layers:
+    ffmpeg:
+        path: layer
+
 functions:
     webhookHandler:
         handler: src/handler.webhookHandler
@@ -39,6 +43,8 @@ functions:
                 Fn::GetAtt:
                 - WhatsappMessageQueue
                 - Arn
+        layers:
+            Ref: FfmpegLambdaLayer
 
 plugins:
     - serverless-plugin-typescript

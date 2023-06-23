@@ -5,7 +5,8 @@
     "description": "WhatsApp bot for using ChatGPT",
     "scripts": {
         "build": "rimraf dist && tsc -p tsconfig.json",
-        "deploy": "serverless deploy"
+        "deploy": "serverless deploy",
+        "preinstall": "./deployment/ffmpeg-installer.sh"
     },
     "repository": {
         "type": "git",
@@ -35,12 +36,11 @@
         "@middy/core": "^4.5.1",
         "@middy/http-router": "^4.5.1",
         "got": "^13.0.0",
-        "install": "^0.13.0",
         "mime-types": "^2.1.35",
-        "npm": "^9.7.1",
         "openai": "^3.3.0",
         "pino": "^8.14.1",
-        "serialize-error": "^11.0.0"
+        "serialize-error": "^11.0.0",
+        "fluent-ffmpeg": "^2.1.2"
     },
     "overrides": {
         "@types/cacheable-request": "8.3.1"

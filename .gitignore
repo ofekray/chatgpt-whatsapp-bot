@@ -1,6 +1,7 @@
 # Development
 dist
 .build
+layer
 
 # Logs
 logs
