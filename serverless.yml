@@ -24,6 +24,8 @@ provider:
             - Fn::GetAtt:
                 - WhatsappMessageQueue
                 - Arn
+package:
+    individually: true
 
 layers:
     ffmpeg:
