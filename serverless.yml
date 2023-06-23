@@ -44,7 +44,7 @@ functions:
                 - WhatsappMessageQueue
                 - Arn
         layers:
-            Ref: FfmpegLambdaLayer
+        - Ref: FfmpegLambdaLayer
 
 plugins:
     - serverless-plugin-typescript
