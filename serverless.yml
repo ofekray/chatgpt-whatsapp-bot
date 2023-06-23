@@ -49,7 +49,7 @@ functions:
         - Ref: FfmpegLambdaLayer
 
 plugins:
-    - serverless-plugin-typescript
+    - serverless-esbuild
 
 resources:
   Resources:
