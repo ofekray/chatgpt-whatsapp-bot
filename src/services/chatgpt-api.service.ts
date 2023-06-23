@@ -1,5 +1,8 @@
 import { Configuration, OpenAIApi } from "openai";
+import * as mime from "mime-types"
 import { logger } from "./logger.service.js";
+import { WhatsappMedia } from "../types/whatsapp-media.type.js";
+import { Readable } from "stream";
 
 
 
@@ -12,6 +15,26 @@ class ChatGPTApi {
             apiKey: process.env.OPENAI_API_KEY,
         });
         this.openaiClient = new OpenAIApi(config);
+    }
+
+    async transcribe(audio: WhatsappMedia): Promise<string> {
+        try {
+            const ext = mime.extension(audio.mimeType);
+            if (!ext) {
+                logger.error("Missing audio extension", { mimeType: audio.mimeType });
+                return "";
+            }
+            const audioReadStream = Readable.from(audio.buffer);
+            //@ts-expect-error
+            audioReadStream.path = `conversation.${ext}`;
+            const transcription = await this.openaiClient.createTranscription(audioReadStream, "whisper-1");
+            logger.debug("Transcription received from OpenAI", { transcription });
+            return transcription?.data?.text;
+        }
+        catch(error) {
+            logger.error("Error getting transcription from OpenAI", { error });
+            return "";
+        }
     }
 
     async ask(question: string): Promise<string> {
