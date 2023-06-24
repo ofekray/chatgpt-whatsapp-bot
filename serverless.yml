@@ -7,6 +7,7 @@ provider:
     memorySize: 1024
     environment:
         LOG_LEVEL: debug
+        FFMPEG_PATH: /opt/ffmpeg/ffmpeg
         WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${ssm:/whatsapp-webhook-verify-token}
         WHATSAPP_FACEBOOK_APP_SECRET: ${ssm:/whatsapp-facebook-app-secret}
         WHATSAPP_API_TOKEN: ${ssm:/whatsapp-api-token}

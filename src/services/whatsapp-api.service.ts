@@ -3,7 +3,7 @@ import got from 'got';
 import { WhatsappMessageTypesEnum } from "../types/whatsapp-enums.type.js";
 import { MessageRequestBody, TextMessageRequestBody } from "../types/whatsapp-messages.type.js";
 import { logger } from "./logger.service.js";
-import { WhatsappMedia, WhatsappMediaURLResponse } from '../types/whatsapp-media.type.js';
+import { WhatsappMediaURLResponse } from '../types/whatsapp-media.type.js';
 
 class WhatsappApi {
     async postTextMessage(to: string, text: string) {
@@ -26,11 +26,11 @@ class WhatsappApi {
         }
     }
 
-    async downloadMediaById(mediaId: string): Promise<WhatsappMedia | null> {
+    async downloadMediaById(mediaId: string): Promise<Buffer | null> {
         try {
             const mediaURLResponse = await this.retrieveMediaURLRequest(mediaId);
             const buffer = await this.downloadMedia(mediaURLResponse.url);
-            return { buffer, mimeType: mediaURLResponse.mime_type };
+            return buffer;
         }
         catch(error) {
             logger.error("Error downloading media", { error });

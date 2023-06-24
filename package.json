@@ -27,7 +27,7 @@
     "homepage": "https://github.com/ofekray/chatgpt-whatsapp-bot#readme",
     "devDependencies": {
         "@types/aws-lambda": "^8.10.116",
-        "@types/mime-types": "^2.1.1",
+        "@types/fluent-ffmpeg": "^2.1.21",
         "@types/node": "^20.2.5",
         "rimraf": "^5.0.1",
         "run-script-os": "^1.1.6",
@@ -41,7 +41,6 @@
         "@middy/http-router": "^4.5.1",
         "fluent-ffmpeg": "^2.1.2",
         "got": "^13.0.0",
-        "mime-types": "^2.1.35",
         "openai": "^3.3.0",
         "pino": "^8.14.1",
         "serialize-error": "^11.0.0"

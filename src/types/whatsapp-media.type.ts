@@ -6,8 +6,3 @@ export interface WhatsappMediaURLResponse {
     file_size: number;
     id: string;
 }
-
-export interface WhatsappMedia {
-    buffer: Buffer;
-    mimeType: string;
-}
