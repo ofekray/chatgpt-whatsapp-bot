@@ -1,7 +1,9 @@
 import { Configuration, OpenAIApi } from "openai";
+import { createReadStream } from "fs";
+import * as fs from "fs/promises";
+import * as path from 'path';
 import { logger } from "./logger.service.js";
-
-
+import { audioConverter } from "./audio-converter.service.js";
 
 class ChatGPTApi {
     private readonly openaiClient: OpenAIApi;
@@ -12,6 +14,31 @@ class ChatGPTApi {
             apiKey: process.env.OPENAI_API_KEY,
         });
         this.openaiClient = new OpenAIApi(config);
+    }
+
+    async transcribe(audioBuffer: Buffer): Promise<string> {
+        let mp3AudioPath: string = "";
+
+        try {
+            mp3AudioPath = await audioConverter.toMp3(audioBuffer);
+            if (!mp3AudioPath) {
+                return "";
+            }
+            const audioReadStream = createReadStream(mp3AudioPath);
+            const transcription = await this.openaiClient.createTranscription(audioReadStream, "whisper-1");
+            const text = transcription?.data?.text;
+            logger.debug("Transcription received from OpenAI", { text });
+            return text;
+        }
+        catch(error) {
+            logger.error("Error getting transcription from OpenAI", { error });
+            return "";
+        }
+        finally {
+            if (mp3AudioPath) {
+                await fs.rm(path.dirname(mp3AudioPath), { recursive: true });
+            }
+        }
     }
 
     async ask(question: string): Promise<string> {

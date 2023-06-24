@@ -3,7 +3,7 @@ import { FunctionURLEvent } from "../types/function-url-event.type.js";
 import { httpResult } from "../services/http-result.service.js";
 import { logger } from "../services/logger.service.js";
 import { facebookPayloadValidator } from "../services/facebook-payload-validator.service.js";
-import { WhatsappWebhookObject } from "../types/whatsapp-webhook.type.js";
+import { WhatsappMessagesObject, WhatsappWebhookObject } from "../types/whatsapp-webhook.type.js";
 import { whatsappApi } from "../services/whatsapp-api.service.js";
 import { WhatsappWebhookTypesEnum } from "../types/whatsapp-enums.type.js";
 import { chatGPTApi } from "../services/chatgpt-api.service.js";
@@ -57,7 +57,7 @@ class WhatsappHandler {
             for (const record of event.Records) {
                 const whatsappWebhook: WhatsappWebhookObject = JSON.parse(record.body);
                 logger.debug("Webhook received", whatsappWebhook);
-                const { messagesBySender, nameBySender } = this.groupMessages(whatsappWebhook);
+                const { messagesBySender, nameBySender } = await this.extractMessages(whatsappWebhook);
                 logger.debug("Messages grouped", { messagesBySender: Array.from(messagesBySender.entries()) });
         
                 for (const [sender, messages] of messagesBySender) {
@@ -73,24 +73,31 @@ class WhatsappHandler {
         }
     }
 
-    private groupMessages(whatsappWebhook: WhatsappWebhookObject) {
+    private async extractMessages(whatsappWebhook: WhatsappWebhookObject) {
         const messagesBySender: Map<string, string[]> = new Map();
         const nameBySender: Map<string, string> = new Map();
 
         for (const entry of whatsappWebhook?.entry ?? []) {
             for (const change of entry?.changes ?? []) {
                 for (const message of change?.value?.messages ?? []) {
-                    if (message?.from && message?.type === WhatsappWebhookTypesEnum.Text && message?.text?.body && this.isTimestampValid(message?.timestamp)) {
-                        if (!messagesBySender.has(message.from)) {
-                            messagesBySender.set(message.from, []);
-                        }
-                        messagesBySender.get(message.from)!.push(message.text.body);
+                    if (!message?.from || !this.isTimestampValid(message?.timestamp)) {
+                        continue;
+                    }
 
-                        if (!nameBySender.has(message.from)) {
-                            const name = change.value.contacts.find(x => x.wa_id === message.from)?.profile?.name;
-                            if (name) {
-                                nameBySender.set(message.from, name);
-                            }
+                    const messageText = await this.extractMessageText(message);
+                    if (!messageText) {
+                        continue;
+                    }
+
+                    if (!messagesBySender.has(message.from)) {
+                        messagesBySender.set(message.from, []);
+                    }
+                    messagesBySender.get(message.from)!.push(messageText);
+
+                    if (!nameBySender.has(message.from)) {
+                        const name = change.value.contacts.find(x => x.wa_id === message.from)?.profile?.name;
+                        if (name) {
+                            nameBySender.set(message.from, name);
                         }
                     }
                 }
@@ -98,6 +105,28 @@ class WhatsappHandler {
         }
 
         return { messagesBySender, nameBySender };
+    }
+
+    private async extractMessageText(message: WhatsappMessagesObject): Promise<string | undefined> {
+        try {
+            if (message?.type === WhatsappWebhookTypesEnum.Text) {
+                return message?.text?.body;
+            }
+
+            if (message?.type === WhatsappWebhookTypesEnum.Audio && message?.audio?.id) {
+                const audio = await whatsappApi.downloadMediaById(message.audio.id);
+                if (audio) {
+                    const transcription = await chatGPTApi.transcribe(audio);
+                    return transcription;
+                }
+            }
+
+            return undefined;
+        }
+        catch (error) {
+            logger.error("Error extracting message text", { error });
+            return undefined;
+        }
     }
 
     private isTimestampValid(timestampString: string) {
