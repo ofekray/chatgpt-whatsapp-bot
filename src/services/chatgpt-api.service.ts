@@ -1,9 +1,10 @@
-import { Configuration, OpenAIApi } from "openai";
+import { ChatCompletionRequestMessage, Configuration, OpenAIApi } from "openai";
 import { createReadStream } from "fs";
 import * as fs from "fs/promises";
 import * as path from 'path';
 import { logger } from "./logger.service.js";
 import { audioConverter } from "./audio-converter.service.js";
+import { HistoryChatMessage } from "../types/chat-history.types.js";
 
 class ChatGPTApi {
     private readonly openaiClient: OpenAIApi;
@@ -41,13 +42,15 @@ class ChatGPTApi {
         }
     }
 
-    async ask(question: string): Promise<string> {
+    async ask(name: string, question: string, messageHistory: HistoryChatMessage[]): Promise<string> {
         try {
             const chatCompletion = await this.openaiClient.createChatCompletion({
                 model: "gpt-3.5-turbo",
                 messages: [
                     { role: "system", content: "You are ChatGPT a helpful assistant" },
-                    { role: "user", content: question },
+                    { role: "system", content: `The name of the user is ${name}` },
+                    ...this.mapHistoryToChatMessages(messageHistory),
+                    { role: "user", content: question }
                 ]
             });
     
@@ -72,6 +75,13 @@ class ChatGPTApi {
             logger.error("Error getting answer from OpenAI", { error });
             return "(ERROR: Unknown)";
         }
+    }
+
+    private mapHistoryToChatMessages(messageHistory: HistoryChatMessage[]): ChatCompletionRequestMessage[] {
+        return messageHistory.flatMap(x => [
+            { role: 'user', content: x.question },
+            { role: 'assistant', content: x.answer }
+        ]);
     }
 }
 

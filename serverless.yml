@@ -17,6 +17,13 @@ provider:
         OPENAI_API_KEY: ${ssm:/openai-api-key}
         WHATSAPP_MESSAGE_QUEUE_URL:
             Ref: WhatsappMessageQueue
+        HISTORY_MAX_COUNT: 5
+        HISTORY_TTL_IN_MINUTES: 3
+        REDIS_HOST: ${ssm:/redis-host}
+        REDIS_PORT: ${ssm:/redis-port}
+        REDIS_USERNAME: ${ssm:/redis-username}
+        REDIS_PASSWORD: ${ssm:/redis-password}
+
     iamRoleStatements:
         - Effect: Allow
           Action:

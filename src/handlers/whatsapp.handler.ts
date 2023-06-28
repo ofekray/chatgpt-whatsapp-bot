@@ -8,6 +8,7 @@ import { whatsappApi } from "../services/whatsapp-api.service.js";
 import { WhatsappWebhookTypesEnum } from "../types/whatsapp-enums.type.js";
 import { chatGPTApi } from "../services/chatgpt-api.service.js";
 import { messageReceivedPublisher } from "../services/message-recevied-publisher.service.js";
+import { chatHistoryService } from "../services/chat-history.service.js";
 
 class WhatsappHandler {
     private readonly MESSAGE_TIME_LIMIT_IN_MINUTES = 2;
@@ -61,10 +62,12 @@ class WhatsappHandler {
                 logger.debug("Messages grouped", { messagesBySender: Array.from(messagesBySender.entries()) });
         
                 for (const [sender, messages] of messagesBySender) {
-                    const name = nameBySender.get(sender) ?? "Unknown"; // Can by used to personalize the answer in the future
+                    const name = nameBySender.get(sender) ?? "Unknown";
                     const question = messages.join("\n");
-                    const answer = await chatGPTApi.ask(question);
+                    const history = await chatHistoryService.get(sender);
+                    const answer = await chatGPTApi.ask(name, question, history);
                     await whatsappApi.postTextMessage(sender, answer);
+                    await chatHistoryService.add(sender, { question, answer });
                 }
             }
         }
