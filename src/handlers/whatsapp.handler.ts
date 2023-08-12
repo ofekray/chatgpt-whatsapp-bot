@@ -9,6 +9,7 @@ import { WhatsappWebhookTypesEnum } from "../types/whatsapp-enums.type.js";
 import { chatGPTApi } from "../services/chatgpt-api.service.js";
 import { messageReceivedPublisher } from "../services/message-recevied-publisher.service.js";
 import { chatHistoryService } from "../services/chat-history.service.js";
+import { ChatGPTResponseType } from "../types/chatgpt-response.type.js";
 
 class WhatsappHandler {
     private readonly MESSAGE_TIME_LIMIT_IN_MINUTES = 2;
@@ -66,8 +67,13 @@ class WhatsappHandler {
                     const question = messages.join("\n");
                     const history = await chatHistoryService.get(sender);
                     const answer = await chatGPTApi.ask(name, question, history);
-                    await whatsappApi.postTextMessage(sender, answer);
-                    await chatHistoryService.add(sender, { question, answer });
+                    if (answer.type === ChatGPTResponseType.Image) {
+                        await whatsappApi.postImageMessage(sender, answer.url);
+                    }
+                    else {
+                        await whatsappApi.postTextMessage(sender, answer.text);
+                        await chatHistoryService.add(sender, { question, answer: answer.text });
+                    }
                 }
             }
         }

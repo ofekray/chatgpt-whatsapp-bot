@@ -1,7 +1,7 @@
 
 import got from 'got';
 import { WhatsappMessageTypesEnum } from "../types/whatsapp-enums.type.js";
-import { MessageRequestBody, TextMessageRequestBody } from "../types/whatsapp-messages.type.js";
+import { ImageMessageRequestBody, MessageRequestBody, TextMessageRequestBody } from "../types/whatsapp-messages.type.js";
 import { logger } from "./logger.service.js";
 import { WhatsappMediaURLResponse } from '../types/whatsapp-media.type.js';
 
@@ -19,10 +19,29 @@ class WhatsappApi {
                 }
             };
             
-            await this.postTextMessageRequest(body);
+            await this.postMessageRequest(body);
         }
         catch(error) {
-            logger.error("Error sending whatsapp message", { error });
+            logger.error("Error sending whatsapp text message", { error });
+        }
+    }
+
+    async postImageMessage(to: string, imageUrl: string) {
+        try {
+            const body: ImageMessageRequestBody = {
+                messaging_product: "whatsapp",
+                recipient_type: "individual",
+                to,
+                type: WhatsappMessageTypesEnum.Image,
+                image: {
+                    link: imageUrl,
+                }
+            };
+
+            await this.postMessageRequest(body);
+        }
+        catch(error) {
+            logger.error("Error sending whatsapp image message", { error });
         }
     }
 
@@ -38,7 +57,7 @@ class WhatsappApi {
         }
     }
 
-    private async postTextMessageRequest<T extends MessageRequestBody<WhatsappMessageTypesEnum>>(body: T): Promise<void> {
+    private async postMessageRequest<T extends MessageRequestBody<WhatsappMessageTypesEnum>>(body: T): Promise<void> {
         const url = `${process.env.WHATSAPP_API_BASE_URL}/${process.env.WHATSAPP_BUSINESS_NUMBER}/messages`;
         const headers = this.buildRequestHeaders();
         const response = await got.post(url, { headers, json: body }).json();
