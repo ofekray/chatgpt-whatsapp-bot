@@ -1,7 +1,9 @@
 import { pino } from 'pino';
 import { serializeError } from 'serialize-error';
 import { LogLevel } from "../types/pino-log-structure.type.js";
+import { singleton } from 'tsyringe';
 
+@singleton()
 export class Logger {
     private readonly logger: pino.Logger;
     constructor() {
