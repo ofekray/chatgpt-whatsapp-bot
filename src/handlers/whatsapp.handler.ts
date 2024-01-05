@@ -1,19 +1,26 @@
 import { Context, SQSEvent } from "aws-lambda";
 import { FunctionURLEvent } from "../types/function-url-event.type.js";
 import { httpResult } from "../services/http-result.service.js";
-import { logger } from "../services/logger.service.js";
+import { Logger } from "../services/logger.service.js";
 import { facebookPayloadValidator } from "../services/facebook-payload-validator.service.js";
 import { WhatsappMessagesObject, WhatsappWebhookObject } from "../types/whatsapp-webhook.type.js";
-import { whatsappApi } from "../services/whatsapp-api.service.js";
+import { WhatsappApi } from "../services/whatsapp-api.service.js";
 import { WhatsappWebhookTypesEnum } from "../types/whatsapp-enums.type.js";
-import { chatGPTApi } from "../services/chatgpt-api.service.js";
-import { messageReceivedPublisher } from "../services/message-recevied-publisher.service.js";
-import { chatHistoryService } from "../services/chat-history.service.js";
+import { ChatGPTApi } from "../services/chatgpt-api.service.js";
+import { MessageReceivedPublisher } from "../services/message-recevied-publisher.service.js";
+import { ChatHistoryService } from "../services/chat-history.service.js";
 import { ChatGPTResponseType } from "../types/chatgpt-response.type.js";
+import { singleton } from "tsyringe";
 
-class WhatsappHandler {
+@singleton()
+export class WhatsappHandler {
     private readonly MESSAGE_TIME_LIMIT_IN_MINUTES = 2;
-    constructor() {
+    constructor(
+        private readonly logger: Logger,
+        private readonly chatHistoryService: ChatHistoryService,
+        private readonly messageReceivedPublisher: MessageReceivedPublisher,
+        private readonly chatGPTApi: ChatGPTApi,
+        private readonly whatsappApi: WhatsappApi) {
     }
 
     async handleVerification(event: FunctionURLEvent, _context: Context) {
@@ -23,15 +30,15 @@ class WhatsappHandler {
             const challenge = event.queryStringParameters?.["hub.challenge"];
     
             if (mode !== "subscribe" || token !== process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || !challenge) {
-                logger.info("Verification failed", event);
+                this.logger.info("Verification failed", event);
                 return httpResult(401, { message: "Unauthorized" });
             }
     
-            logger.info("Verification successful", event);
+            this.logger.info("Verification successful", event);
             return httpResult(200, challenge);
         }
         catch (error) {
-            logger.error("Error handling verification", { error });
+            this.logger.error("Error handling verification", { error });
             return httpResult(500, { message: "Internal server error" });
         }
     }
@@ -43,13 +50,13 @@ class WhatsappHandler {
                 return httpResult(401, { message: "Unauthorized" });
             }
 
-            logger.debug("Webhook received", { body: event.body });
-            await messageReceivedPublisher.publish(event.body!); // Publish to SQS, so whatsapp will receive a 200 response immediately
+            this.logger.debug("Webhook received", { body: event.body });
+            await this.messageReceivedPublisher.publish(event.body!); // Publish to SQS, so whatsapp will receive a 200 response immediately
 
             return httpResult(200);
         }
         catch (error) {
-            logger.error("Error handling message", { error });
+            this.logger.error("Error handling message", { error });
             return httpResult(500, { message: "Internal server error" });
         }
     }
@@ -58,27 +65,27 @@ class WhatsappHandler {
         try {
             for (const record of event.Records) {
                 const whatsappWebhook: WhatsappWebhookObject = JSON.parse(record.body);
-                logger.debug("Webhook received", whatsappWebhook);
+                this.logger.debug("Webhook received", whatsappWebhook);
                 const { messagesBySender, nameBySender } = await this.extractMessages(whatsappWebhook);
-                logger.debug("Messages grouped", { messagesBySender: Array.from(messagesBySender.entries()) });
+                this.logger.debug("Messages grouped", { messagesBySender: Array.from(messagesBySender.entries()) });
         
                 for (const [sender, messages] of messagesBySender) {
                     const name = nameBySender.get(sender) ?? "Unknown";
                     const question = messages.join("\n");
-                    const history = await chatHistoryService.get(sender);
-                    const answer = await chatGPTApi.ask(name, question, history);
+                    const history = await this.chatHistoryService.get(sender);
+                    const answer = await this.chatGPTApi.ask(name, question, history);
                     if (answer.type === ChatGPTResponseType.Image) {
-                        await whatsappApi.postImageMessage(sender, answer.url);
+                        await this.whatsappApi.postImageMessage(sender, answer.url);
                     }
                     else {
-                        await whatsappApi.postTextMessage(sender, answer.text);
-                        await chatHistoryService.add(sender, { question, answer: answer.text });
+                        await this.whatsappApi.postTextMessage(sender, answer.text);
+                        await this.chatHistoryService.add(sender, { question, answer: answer.text });
                     }
                 }
             }
         }
         catch (error) {
-            logger.error("Error handling queue message", { error });
+            this.logger.error("Error handling queue message", { error });
         }
     }
 
@@ -123,9 +130,9 @@ class WhatsappHandler {
             }
 
             if (message?.type === WhatsappWebhookTypesEnum.Audio && message?.audio?.id) {
-                const audio = await whatsappApi.downloadMediaById(message.audio.id);
+                const audio = await this.whatsappApi.downloadMediaById(message.audio.id);
                 if (audio) {
-                    const transcription = await chatGPTApi.transcribe(audio);
+                    const transcription = await this.chatGPTApi.transcribe(audio);
                     return transcription;
                 }
             }
@@ -133,7 +140,7 @@ class WhatsappHandler {
             return undefined;
         }
         catch (error) {
-            logger.error("Error extracting message text", { error });
+            this.logger.error("Error extracting message text", { error });
             return undefined;
         }
     }
@@ -141,9 +148,7 @@ class WhatsappHandler {
     private isTimestampValid(timestampString: string) {
         const timestamp = +timestampString;
         const differenceInMinutes = ((Date.now()/1000) - timestamp)/60;
-        logger.debug("Timestamp difference in minutes", { differenceInMinutes });
+        this.logger.debug("Timestamp difference in minutes", { differenceInMinutes });
         return differenceInMinutes < this.MESSAGE_TIME_LIMIT_IN_MINUTES;
     }
 }
-
-export const whatsappHandler = new WhatsappHandler();

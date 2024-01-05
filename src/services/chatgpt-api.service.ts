@@ -1,16 +1,18 @@
+import { singleton } from "tsyringe";
 import { ChatCompletionRequestMessage, Configuration, CreateChatCompletionRequest, CreateChatCompletionResponse, OpenAIApi } from "openai";
 import { createReadStream } from "fs";
 import * as fs from "fs/promises";
 import * as path from 'path';
-import { logger } from "./logger.service.js";
-import { audioConverter } from "./audio-converter.service.js";
 import { HistoryChatMessage } from "../types/chat-history.types.js";
 import { ChatGPTResponse, ChatGPTResponseType } from "../types/chatgpt-response.type.js";
+import { AudioConverter } from "./audio-converter.service.js";
+import { Logger } from "./logger.service.js";
 
-class ChatGPTApi {
+@singleton()
+export class ChatGPTApi {
     private readonly openaiClient: OpenAIApi;
 
-    constructor() {
+    constructor(private readonly audioConverter: AudioConverter, private readonly logger: Logger) {
         const config = new Configuration({
             organization: process.env.OPENAI_ORG,
             apiKey: process.env.OPENAI_API_KEY,
@@ -22,18 +24,18 @@ class ChatGPTApi {
         let mp3AudioPath: string = "";
 
         try {
-            mp3AudioPath = await audioConverter.toMp3(audioBuffer);
+            mp3AudioPath = await this.audioConverter.toMp3(audioBuffer);
             if (!mp3AudioPath) {
                 return "";
             }
             const audioReadStream = createReadStream(mp3AudioPath);
             const transcription = await this.openaiClient.createTranscription(audioReadStream, "whisper-1");
             const text = transcription?.data?.text;
-            logger.debug("Transcription received from OpenAI", { text });
+            this.logger.debug("Transcription received from OpenAI", { text });
             return text;
         }
         catch(error) {
-            logger.error("Error getting transcription from OpenAI", { error });
+            this.logger.error("Error getting transcription from OpenAI", { error });
             return "";
         }
         finally {
@@ -54,7 +56,7 @@ class ChatGPTApi {
             }
         }
         catch(error) {
-            logger.error("Error getting answer from OpenAI", { error });
+            this.logger.error("Error getting answer from OpenAI", { error });
             return { type: ChatGPTResponseType.Text, text: "(ERROR: Unknown)" };
         }
     }
@@ -66,7 +68,7 @@ class ChatGPTApi {
             return { type: ChatGPTResponseType.Text, text: answer };
         }
         catch(error) {
-            logger.error("Error getting text answer from OpenAI", { error });
+            this.logger.error("Error getting text answer from OpenAI", { error });
             return { type: ChatGPTResponseType.Text, text: "(ERROR: Unknown)" };
         }
     }
@@ -75,12 +77,12 @@ class ChatGPTApi {
         try {
             const response = await this.openaiClient.createImage({ prompt, n: 1, size: "512x512" });
             if (!response?.data?.data?.length || !response?.data?.data[0]?.url) {
-                logger.error("Error getting image answer from OpenAI", { data: response?.data });
+                this.logger.error("Error getting image answer from OpenAI", { data: response?.data });
             }
             return { type: ChatGPTResponseType.Image, url: response?.data?.data[0]?.url! };
         }
         catch(error) {
-            logger.error("Error generating image from OpenAI", { error });
+            this.logger.error("Error generating image from OpenAI", { error });
             return { type: ChatGPTResponseType.Text, text: "(ERROR: Unknown)" };
         }
     }
@@ -99,12 +101,12 @@ class ChatGPTApi {
 
     private extractAnswerFromChatCompletionResponse(chatCompletion: CreateChatCompletionResponse): string {
         if (!chatCompletion?.choices?.length || !chatCompletion.choices[0].message?.content) {
-            logger.error("Error getting answer from OpenAI", { chatCompletion });
+            this.logger.error("Error getting answer from OpenAI", { chatCompletion });
             return "(ERROR: Empty answer)";
         }
 
         const choice = chatCompletion.choices[0];
-        logger.debug("Answer received from OpenAI", { choice });
+        this.logger.debug("Answer received from OpenAI", { choice });
         
         switch (choice.finish_reason) {
             case "stop":
@@ -123,5 +125,3 @@ class ChatGPTApi {
         ]);
     }
 }
-
-export const chatGPTApi = new ChatGPTApi();

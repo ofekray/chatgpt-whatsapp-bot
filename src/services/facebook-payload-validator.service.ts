@@ -1,7 +1,10 @@
 import * as crypto from 'crypto';
 import { FunctionURLEvent } from "../types/function-url-event.type.js";
-import { logger } from "./logger.service.js";
+import { Logger } from './logger.service.js';
+import { container } from 'tsyringe';
 
+
+const logger = container.resolve(Logger);
 export const facebookPayloadValidator = (event: FunctionURLEvent): boolean => {
     let isValid: boolean = false;
     try {

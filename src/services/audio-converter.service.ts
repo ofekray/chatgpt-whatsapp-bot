@@ -2,9 +2,13 @@ import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
-import { logger } from './logger.service.js';
+import { Logger } from './logger.service.js';
+import { singleton } from 'tsyringe';
 
-class AudioConverter {
+@singleton()
+export class AudioConverter {
+    constructor(private readonly logger: Logger) {}
+    
     async toMp3(audioBuffer: Buffer): Promise<string> {
         const tempDir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), path.sep));
 
@@ -13,11 +17,11 @@ class AudioConverter {
             const mp3AudioPath = path.join(tempDir, `conversation.mp3`);
             await fs.writeFile(originalAudioPath, audioBuffer);
             await this.transcodeAudio(originalAudioPath, mp3AudioPath, "mp3");
-            logger.debug("Audio converted to mp3", { mp3AudioPath });
+            this.logger.debug("Audio converted to mp3", { mp3AudioPath });
             return mp3AudioPath;
         }
         catch (error) {
-            logger.error("Error converting audio to mp3", { error });
+            this.logger.error("Error converting audio to mp3", { error });
             await fs.rm(tempDir, { recursive: true });
             return "";
         }
@@ -38,5 +42,3 @@ class AudioConverter {
         });
     }
 }
-
-export const audioConverter = new AudioConverter();

@@ -1,7 +1,10 @@
+import { container } from "tsyringe";
 import { Context } from "aws-lambda";
-import { whatsappHandler } from "./handlers/whatsapp.handler.js";
 import { httpResult } from "./services/http-result.service.js";
 import { FunctionURLEvent, FunctionURLRoute } from "./types/function-url-event.type.js";
+import { WhatsappHandler } from "./handlers/whatsapp.handler.js";
+
+const whatsappHandler = container.resolve(WhatsappHandler);
 
 export const routes: FunctionURLRoute[] = [
     {

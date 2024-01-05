@@ -1,10 +1,12 @@
 import { SQSClient, SendMessageCommand, SendMessageCommandInput } from "@aws-sdk/client-sqs";
-import { logger } from "./logger.service.js";
+import { singleton } from "tsyringe";
+import { Logger } from "./logger.service.js";
 
-class MessageReceivedPublisher {
+@singleton()
+export class MessageReceivedPublisher {
     private readonly sqsClient: SQSClient;
 
-    constructor() {
+    constructor(private readonly logger: Logger) {
         this.sqsClient = new SQSClient({});
     }
 
@@ -16,12 +18,10 @@ class MessageReceivedPublisher {
             };
             const command = new SendMessageCommand(input);
             await this.sqsClient.send(command);
-            logger.debug("Message published", { input });
+            this.logger.debug("Message published", { input });
         }
         catch (error) {
-            logger.error("Error publishing message", { error });
+            this.logger.error("Error publishing message", { error });
         }
     }
 }
-
-export const messageReceivedPublisher = new MessageReceivedPublisher();

@@ -2,10 +2,14 @@
 import got from 'got';
 import { WhatsappMessageTypesEnum } from "../types/whatsapp-enums.type.js";
 import { ImageMessageRequestBody, MessageRequestBody, TextMessageRequestBody } from "../types/whatsapp-messages.type.js";
-import { logger } from "./logger.service.js";
 import { WhatsappMediaURLResponse } from '../types/whatsapp-media.type.js';
+import { Logger } from './logger.service.js';
+import { singleton } from 'tsyringe';
 
-class WhatsappApi {
+@singleton()
+export class WhatsappApi {
+    constructor(private readonly logger: Logger) {}
+
     async postTextMessage(to: string, text: string) {
         try {
             const body: TextMessageRequestBody = {
@@ -22,7 +26,7 @@ class WhatsappApi {
             await this.postMessageRequest(body);
         }
         catch(error) {
-            logger.error("Error sending whatsapp text message", { error });
+            this.logger.error("Error sending whatsapp text message", { error });
         }
     }
 
@@ -41,7 +45,7 @@ class WhatsappApi {
             await this.postMessageRequest(body);
         }
         catch(error) {
-            logger.error("Error sending whatsapp image message", { error });
+            this.logger.error("Error sending whatsapp image message", { error });
         }
     }
 
@@ -52,7 +56,7 @@ class WhatsappApi {
             return buffer;
         }
         catch(error) {
-            logger.error("Error downloading media", { error });
+            this.logger.error("Error downloading media", { error });
             return null;
         }
     }
@@ -61,21 +65,21 @@ class WhatsappApi {
         const url = `${process.env.WHATSAPP_API_BASE_URL}/${process.env.WHATSAPP_BUSINESS_NUMBER}/messages`;
         const headers = this.buildRequestHeaders();
         const response = await got.post(url, { headers, json: body }).json();
-        logger.debug("Sucessfully sent message", { body, response });
+        this.logger.debug("Sucessfully sent message", { body, response });
     }
 
     private async retrieveMediaURLRequest(mediaId: string): Promise<WhatsappMediaURLResponse> {
         const url = `${process.env.WHATSAPP_API_BASE_URL}/${mediaId}`;
         const headers = this.buildRequestHeaders();
         const response = await got.get(url, { headers }).json<WhatsappMediaURLResponse>();
-        logger.debug("Sucessfully retrieved media url", { mediaId, response });
+        this.logger.debug("Sucessfully retrieved media url", { mediaId, response });
         return response;
     }
 
     private async downloadMedia(url: string): Promise<Buffer> {
         const headers = this.buildRequestHeaders();
         const response = await got.get(url, { headers }).buffer();
-        logger.debug("Sucessfully downloaded media", { url });
+        this.logger.debug("Sucessfully downloaded media", { url });
         return response;
     }
 
@@ -86,5 +90,3 @@ class WhatsappApi {
         }
     }
 }
-
-export const whatsappApi = new WhatsappApi();

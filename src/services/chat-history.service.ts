@@ -1,16 +1,17 @@
 import { Redis } from 'ioredis';
 import { parsePositiveInteger } from '../utils/numbers.util.js';
 import { ADD_HISTORY_COMMAND_NAME } from '../types/redis.types.js';
-import { logger } from './logger.service.js';
 import { HistoryChatMessage } from '../types/chat-history.types.js';
+import { singleton } from 'tsyringe';
+import { Logger } from './logger.service.js';
 
-
-class ChatHistoryService {
+@singleton()
+export class ChatHistoryService {
     private maxCount: number;
     private ttlInMinutes: number;
     private redisClient!: Redis;
 
-    constructor() {
+    constructor(private readonly logger: Logger) {
         const { success: parsedMaxCount, value: maxCount } = parsePositiveInteger(process.env.HISTORY_MAX_COUNT || '0');
         const { success: parsedTtl, value: ttlInMinutes } = parsePositiveInteger(process.env.HISTORY_TTL_IN_MINUTES || '0');
         if (parsedMaxCount && parsedTtl) {
@@ -49,7 +50,7 @@ class ChatHistoryService {
                 await this.redisClient.updateChatHistory(this.buildCacheKey(sender), this.maxCount, this.ttlInMinutes, JSON.stringify(message));
             }
             catch (error) {
-                logger.info("Error adding chat history", { error, sender, message });
+                this.logger.info("Error adding chat history", { error, sender, message });
             }
         }
     }
@@ -61,7 +62,7 @@ class ChatHistoryService {
                 return history.map(message => JSON.parse(message)).reverse();
             }
             catch (error) {
-                logger.info("Error getting chat history", { error, sender });
+                this.logger.info("Error getting chat history", { error, sender });
             }
         }
         return [];
@@ -71,5 +72,3 @@ class ChatHistoryService {
         return `chat-history:${sender}`;
     }
 }
-
-export const chatHistoryService = new ChatHistoryService();

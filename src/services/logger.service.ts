@@ -2,7 +2,7 @@ import { pino } from 'pino';
 import { serializeError } from 'serialize-error';
 import { LogLevel } from "../types/pino-log-structure.type.js";
 
-class Logger {
+export class Logger {
     private readonly logger: pino.Logger;
     constructor() {
         this.logger = pino({
@@ -53,5 +53,3 @@ class Logger {
         return result;
     }
 }
-
-export const logger = new Logger();
