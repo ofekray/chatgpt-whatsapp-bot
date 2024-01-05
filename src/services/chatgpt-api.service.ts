@@ -1,5 +1,5 @@
 import { singleton } from "tsyringe";
-import { ChatCompletionRequestMessage, Configuration, CreateChatCompletionRequest, CreateChatCompletionResponse, OpenAIApi } from "openai";
+import OpenAI from "openai";
 import { createReadStream } from "fs";
 import * as fs from "fs/promises";
 import * as path from 'path';
@@ -10,14 +10,13 @@ import { Logger } from "./logger.service.js";
 
 @singleton()
 export class ChatGPTApi {
-    private readonly openaiClient: OpenAIApi;
+    private readonly openaiClient: OpenAI;
 
     constructor(private readonly audioConverter: AudioConverter, private readonly logger: Logger) {
-        const config = new Configuration({
+        this.openaiClient = new OpenAI({
             organization: process.env.OPENAI_ORG,
             apiKey: process.env.OPENAI_API_KEY,
         });
-        this.openaiClient = new OpenAIApi(config);
     }
 
     async transcribe(audioBuffer: Buffer): Promise<string> {
@@ -29,8 +28,8 @@ export class ChatGPTApi {
                 return "";
             }
             const audioReadStream = createReadStream(mp3AudioPath);
-            const transcription = await this.openaiClient.createTranscription(audioReadStream, "whisper-1");
-            const text = transcription?.data?.text;
+            const transcription = await this.openaiClient.audio.transcriptions.create({ file: audioReadStream, model: "whisper-1" });
+            const text = transcription?.text;
             this.logger.debug("Transcription received from OpenAI", { text });
             return text;
         }
@@ -63,8 +62,8 @@ export class ChatGPTApi {
 
     async askForText(name: string, question: string, messageHistory: HistoryChatMessage[]): Promise<ChatGPTResponse> {
         try {
-            const chatCompletion = await this.openaiClient.createChatCompletion(this.createChatCompletionRequest(name, question, messageHistory));
-            const answer = this.extractAnswerFromChatCompletionResponse(chatCompletion?.data);
+            const chatCompletion = await this.openaiClient.chat.completions.create(this.createChatCompletionRequest(name, question, messageHistory));
+            const answer = this.extractAnswerFromChatCompletionResponse(chatCompletion);
             return { type: ChatGPTResponseType.Text, text: answer };
         }
         catch(error) {
@@ -75,11 +74,11 @@ export class ChatGPTApi {
 
     private async askForImage(prompt: string): Promise<ChatGPTResponse> {
         try {
-            const response = await this.openaiClient.createImage({ prompt, n: 1, size: "512x512" });
-            if (!response?.data?.data?.length || !response?.data?.data[0]?.url) {
+            const response = await this.openaiClient.images.generate({ prompt, n: 1, size: "512x512" });
+            if (!response?.data?.length || !response?.data?.[0].url) {
                 this.logger.error("Error getting image answer from OpenAI", { data: response?.data });
             }
-            return { type: ChatGPTResponseType.Image, url: response?.data?.data[0]?.url! };
+            return { type: ChatGPTResponseType.Image, url: response?.data?.[0].url! };
         }
         catch(error) {
             this.logger.error("Error generating image from OpenAI", { error });
@@ -87,7 +86,7 @@ export class ChatGPTApi {
         }
     }
 
-    private createChatCompletionRequest(name: string, question: string, messageHistory: HistoryChatMessage[]): CreateChatCompletionRequest {
+    private createChatCompletionRequest(name: string, question: string, messageHistory: HistoryChatMessage[]): OpenAI.ChatCompletionCreateParamsNonStreaming {
         return {
             model: "gpt-3.5-turbo",
             messages: [
@@ -99,7 +98,7 @@ export class ChatGPTApi {
         };
     }
 
-    private extractAnswerFromChatCompletionResponse(chatCompletion: CreateChatCompletionResponse): string {
+    private extractAnswerFromChatCompletionResponse(chatCompletion: OpenAI.ChatCompletion): string {
         if (!chatCompletion?.choices?.length || !chatCompletion.choices[0].message?.content) {
             this.logger.error("Error getting answer from OpenAI", { chatCompletion });
             return "(ERROR: Empty answer)";
@@ -118,7 +117,7 @@ export class ChatGPTApi {
         }
     }
 
-    private mapHistoryToChatMessages(messageHistory: HistoryChatMessage[]): ChatCompletionRequestMessage[] {
+    private mapHistoryToChatMessages(messageHistory: HistoryChatMessage[]): OpenAI.ChatCompletionMessageParam[] {
         return messageHistory.flatMap(x => [
             { role: 'user', content: x.question },
             { role: 'assistant', content: x.answer }
