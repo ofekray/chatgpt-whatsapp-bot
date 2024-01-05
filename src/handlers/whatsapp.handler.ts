@@ -1,8 +1,8 @@
 import { Context, SQSEvent } from "aws-lambda";
 import { FunctionURLEvent } from "../types/function-url-event.type.js";
-import { httpResult } from "../services/http-result.service.js";
+import { httpResult } from "../utils/http-result.util.js";
 import { Logger } from "../services/logger.service.js";
-import { facebookPayloadValidator } from "../services/facebook-payload-validator.service.js";
+import { FacebookPayloadValidator } from "../services/facebook-payload-validator.service.js";
 import { WhatsappMessagesObject, WhatsappWebhookObject } from "../types/whatsapp-webhook.type.js";
 import { WhatsappApi } from "../services/whatsapp-api.service.js";
 import { WhatsappWebhookTypesEnum } from "../types/whatsapp-enums.type.js";
@@ -17,6 +17,7 @@ export class WhatsappHandler {
     private readonly MESSAGE_TIME_LIMIT_IN_MINUTES = 2;
     constructor(
         private readonly logger: Logger,
+        private readonly facebookPayloadValidator: FacebookPayloadValidator,
         private readonly chatHistoryService: ChatHistoryService,
         private readonly messageReceivedPublisher: MessageReceivedPublisher,
         private readonly chatGPTApi: ChatGPTApi,
@@ -45,7 +46,7 @@ export class WhatsappHandler {
 
     async handleWebhookMessage(event: FunctionURLEvent, _context: Context) {
         try {
-            const isValid = facebookPayloadValidator(event);
+            const isValid = this.facebookPayloadValidator.validate(event);
             if (!isValid) {
                 return httpResult(401, { message: "Unauthorized" });
             }
