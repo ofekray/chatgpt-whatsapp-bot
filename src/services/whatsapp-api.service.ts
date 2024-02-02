@@ -1,8 +1,8 @@
 
 import got from 'got';
-import { WhatsappMessageTypesEnum } from "../types/whatsapp-enums.type.js";
-import { ImageMessageRequestBody, MessageRequestBody, TextMessageRequestBody } from "../types/whatsapp-messages.type.js";
-import { WhatsappMediaURLResponse } from '../types/whatsapp-media.type.js';
+import { WhatsappMessageTypesEnum } from "../types/whatsapp/whatsapp-enums.type.js";
+import { ImageMessageRequestBody, MessageRequestBody, TextMessageRequestBody } from "../types/whatsapp/whatsapp-messages.type.js";
+import { WhatsappMediaURLResponse } from '../types/whatsapp/whatsapp-media.type.js';
 import { Logger } from './logger.service.js';
 import { singleton } from 'tsyringe';
 

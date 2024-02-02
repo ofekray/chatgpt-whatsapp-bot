@@ -1,15 +1,15 @@
 import { Context, SQSEvent } from "aws-lambda";
-import { FunctionURLEvent } from "../types/function-url-event.type.js";
+import { FunctionURLEvent } from "../types/lambda/function-url-event.type.js";
 import { httpResult } from "../utils/http-result.util.js";
 import { Logger } from "../services/logger.service.js";
 import { FacebookPayloadValidator } from "../services/facebook-payload-validator.service.js";
-import { WhatsappMessagesObject, WhatsappWebhookObject } from "../types/whatsapp-webhook.type.js";
+import { WhatsappMessagesObject, WhatsappWebhookObject } from "../types/whatsapp/whatsapp-webhook.type.js";
 import { WhatsappApi } from "../services/whatsapp-api.service.js";
-import { WhatsappWebhookTypesEnum } from "../types/whatsapp-enums.type.js";
+import { WhatsappWebhookTypesEnum } from "../types/whatsapp/whatsapp-enums.type.js";
 import { ChatGPTApi } from "../services/chatgpt-api.service.js";
 import { MessageReceivedPublisher } from "../services/message-recevied-publisher.service.js";
 import { ChatHistoryService } from "../services/chat-history.service.js";
-import { ChatGPTResponseType } from "../types/chatgpt-response.type.js";
+import { ChatGPTResponseType } from "../types/chatgpt/chatgpt-response.type.js";
 import { singleton } from "tsyringe";
 
 @singleton()
@@ -80,7 +80,7 @@ export class WhatsappHandler {
                     }
                     else {
                         await this.whatsappApi.postTextMessage(sender, answer.text);
-                        await this.chatHistoryService.add(sender, { question, answer: answer.text });
+                        await this.chatHistoryService.add(sender, { question, answer: answer.text, toolCalls: answer.toolCalls });
                     }
                 }
             }

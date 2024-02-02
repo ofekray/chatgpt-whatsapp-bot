@@ -1,5 +1,5 @@
 import * as crypto from 'crypto';
-import { FunctionURLEvent } from "../types/function-url-event.type.js";
+import { FunctionURLEvent } from "../types/lambda/function-url-event.type.js";
 import { Logger } from './logger.service.js';
 import { singleton } from 'tsyringe';
 

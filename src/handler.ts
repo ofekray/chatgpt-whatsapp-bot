@@ -4,7 +4,7 @@ import { SQSHandler } from "aws-lambda";
 import middy from "@middy/core";
 import httpRouterHandler from "@middy/http-router";
 import { routes } from "./routes.js";
-import { FunctionURLHandler } from "./types/function-url-event.type.js";
+import { FunctionURLHandler } from "./types/lambda/function-url-event.type.js";
 import { WhatsappHandler } from "./handlers/whatsapp.handler.js";
 
 

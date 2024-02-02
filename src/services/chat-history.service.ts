@@ -1,7 +1,7 @@
 import { Redis } from 'ioredis';
 import { parsePositiveInteger } from '../utils/numbers.util.js';
-import { ADD_HISTORY_COMMAND_NAME } from '../types/redis.types.js';
-import { HistoryChatMessage } from '../types/chat-history.types.js';
+import { ADD_HISTORY_COMMAND_NAME } from '../types/redis/redis.types.js';
+import { HistoryChatMessage } from '../types/history/chat-history.types.js';
 import { singleton } from 'tsyringe';
 import { Logger } from './logger.service.js';
 

@@ -7,6 +7,7 @@
 This repository contains an open-source WhatsApp bot that mimics ChatGPT's behavior.
 
 It is a fun project that showcases how you can create a bot capable of interacting with users through WhatsApp, handling both text and audio messages, and maintaining a history of recent conversations.
+The bot also supports generating images, and performing currency conversions via function calls.
 
 Feel free to explore and customize the code to suit your specific needs!
 

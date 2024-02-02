@@ -1,6 +1,6 @@
 import { pino } from 'pino';
 import { serializeError } from 'serialize-error';
-import { LogLevel } from "../types/pino-log-structure.type.js";
+import { LogLevel } from "../types/logger/pino-log-structure.type.js";
 import { singleton } from 'tsyringe';
 
 @singleton()
