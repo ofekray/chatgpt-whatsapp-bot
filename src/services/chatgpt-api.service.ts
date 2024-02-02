@@ -3,16 +3,19 @@ import OpenAI from "openai";
 import { createReadStream } from "fs";
 import * as fs from "fs/promises";
 import * as path from 'path';
-import { HistoryChatMessage } from "../types/chat-history.types.js";
-import { ChatGPTResponse, ChatGPTResponseType } from "../types/chatgpt-response.type.js";
+import { HistoryChatMessage } from "../types/history/chat-history.types.js";
+import { ChatGPTResponse, ChatGPTResponseType } from "../types/chatgpt/chatgpt-response.type.js";
 import { AudioConverter } from "./audio-converter.service.js";
 import { Logger } from "./logger.service.js";
+import { ChatGPTToolCall } from "../types/chatgpt/chatgpt-tool-call.types.js";
+import { InternalChatGPTResult, InternalChatGPTResultType, InternalChatGPTToolCallsResult } from "../types/chatgpt/chatgpt-result.type.js";
+import { CurrencyApi } from "./currency-api.service.js";
 
 @singleton()
 export class ChatGPTApi {
     private readonly openaiClient: OpenAI;
 
-    constructor(private readonly audioConverter: AudioConverter, private readonly logger: Logger) {
+    constructor(private readonly audioConverter: AudioConverter, private readonly currencyApi: CurrencyApi, private readonly logger: Logger) {
         this.openaiClient = new OpenAI({
             organization: process.env.OPENAI_ORG,
             apiKey: process.env.OPENAI_API_KEY,
@@ -56,19 +59,30 @@ export class ChatGPTApi {
         }
         catch(error) {
             this.logger.error("Error getting answer from OpenAI", { error });
-            return { type: ChatGPTResponseType.Text, text: "(ERROR: Unknown)" };
+            return this.buildTextResponse("(ERROR: Unknown)");
         }
     }
 
     async askForText(name: string, question: string, messageHistory: HistoryChatMessage[]): Promise<ChatGPTResponse> {
         try {
-            const chatCompletion = await this.openaiClient.chat.completions.create(this.createChatCompletionRequest(name, question, messageHistory));
-            const answer = this.extractAnswerFromChatCompletionResponse(chatCompletion);
-            return { type: ChatGPTResponseType.Text, text: answer };
+            const chatCompletionRequest = this.createChatCompletionRequest(name, question, messageHistory);
+            const chatCompletion = await this.openaiClient.chat.completions.create(chatCompletionRequest);
+            const result = await this.buildResultFromChatCompletionResponse(chatCompletion);
+            if (result.type === InternalChatGPTResultType.Text) {
+                return this.buildTextResponse(result.text);
+            }
+            else {
+                this.addToolCallsToChatMessages(chatCompletionRequest.messages, result.toolCalls);
+                const toolCallsResult = await this.buildResultFromChatCompletionResponse(await this.openaiClient.chat.completions.create(chatCompletionRequest));
+                if (toolCallsResult.type === InternalChatGPTResultType.ToolCalls) {
+                    return this.buildTextResponse("(ERROR: Tool calls recursion not supported)");
+                }
+                return this.buildTextResponse(toolCallsResult.text, result.toolCalls);
+            }
         }
         catch(error) {
             this.logger.error("Error getting text answer from OpenAI", { error });
-            return { type: ChatGPTResponseType.Text, text: "(ERROR: Unknown)" };
+            return this.buildTextResponse("(ERROR: Unknown)");
         }
     }
 
@@ -82,7 +96,7 @@ export class ChatGPTApi {
         }
         catch(error) {
             this.logger.error("Error generating image from OpenAI", { error });
-            return { type: ChatGPTResponseType.Text, text: "(ERROR: Unknown)" };
+            return this.buildTextResponse("(ERROR: Unknown)");
         }
     }
 
@@ -94,33 +108,103 @@ export class ChatGPTApi {
                 { role: "system", content: `The name of the user is ${name}` },
                 ...this.mapHistoryToChatMessages(messageHistory),
                 { role: "user", content: question }
-            ]
+            ],
+            tools: [
+                {
+                    type: "function",
+                    function: {
+                        name: "convert_currency",
+                        description: "Converts amount from one currency to another",
+                        parameters: {
+                            type: "object",
+                            required: ["amount", "from", "to"],
+                            properties: {
+                                amount: { type: "number", description: "The amount to convert" },
+                                from: { type: "string", description: "The currency code to convert from in ISO 4217 format" },
+                                to: { type: "string", description: "The currency code to convert to in ISO 4217 format" }
+                            },
+                        }
+                    }
+                }
+            ],
+            tool_choice: "auto"
         };
     }
 
-    private extractAnswerFromChatCompletionResponse(chatCompletion: OpenAI.ChatCompletion): string {
-        if (!chatCompletion?.choices?.length || !chatCompletion.choices[0].message?.content) {
+    private async buildResultFromChatCompletionResponse(chatCompletion: OpenAI.ChatCompletion): Promise<InternalChatGPTResult> {
+        if (!chatCompletion?.choices?.length || (!chatCompletion.choices[0].message?.content && !chatCompletion.choices[0].message?.tool_calls?.length)) {
             this.logger.error("Error getting answer from OpenAI", { chatCompletion });
-            return "(ERROR: Empty answer)";
+            return this.buildInternalTextResult("(ERROR: Empty answer)");
         }
 
         const choice = chatCompletion.choices[0];
         this.logger.debug("Answer received from OpenAI", { choice });
         
         switch (choice.finish_reason) {
+            case "tool_calls":
+                return await this.buildInternalToolCallsResult(choice.message?.tool_calls!);
             case "stop":
-                return choice.message?.content!;
+                return this.buildInternalTextResult(choice.message?.content!);
             case "length":
-                return choice.message?.content! + "\n(ERROR: Token limit reached)";
+                return this.buildInternalTextResult(choice.message?.content! + "\n(ERROR: Token limit reached)");
             default:
-                return choice.message?.content! + `\n(ERROR: ${choice.finish_reason})`;
+                return this.buildInternalTextResult(choice.message?.content! + `\n(ERROR: ${choice.finish_reason})`);
         }
     }
 
     private mapHistoryToChatMessages(messageHistory: HistoryChatMessage[]): OpenAI.ChatCompletionMessageParam[] {
-        return messageHistory.flatMap(x => [
-            { role: 'user', content: x.question },
-            { role: 'assistant', content: x.answer }
-        ]);
+        return messageHistory.flatMap(x => {
+            const messages: OpenAI.ChatCompletionMessageParam[] = [];
+            messages.push({ role: 'user', content: x.question });
+            this.addToolCallsToChatMessages(messages, x.toolCalls);
+            messages.push({ role: 'assistant', content: x.answer });
+            return messages;
+        });
+    }
+
+    private addToolCallsToChatMessages(messages: OpenAI.ChatCompletionMessageParam[], toolCalls: ChatGPTToolCall[]): void {
+        if (toolCalls?.length) {
+            messages.push({ role: 'assistant', tool_calls: toolCalls.map(x => ({
+                type: "function",
+                id: x.id,
+                function: {
+                    arguments: x.arguments,
+                    name: x.name,
+                }
+            }))});
+            toolCalls.forEach(x => messages.push({ role: 'tool', tool_call_id: x.id, content: x.response }));
+        }
+    }
+
+    private async buildInternalToolCallsResult(toolCalls: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[]): Promise<InternalChatGPTResult> {
+        const resultToolCalls: ChatGPTToolCall[] = [];
+
+        for (const toolCall of toolCalls) {
+            const functionName = toolCall.function?.name;
+            switch (functionName) {
+                case "convert_currency":
+                    resultToolCalls.push(await this.buildConvertCurrencyToolCall(toolCall));
+                    break;
+                default:
+                    return this.buildInternalTextResult(`(ERROR: Unknown function name: ${functionName})`);
+                    break;
+            }
+        }
+
+        return { type: InternalChatGPTResultType.ToolCalls, toolCalls: resultToolCalls };
+    }
+
+    private async buildConvertCurrencyToolCall(from: OpenAI.Chat.Completions.ChatCompletionMessageToolCall): Promise<ChatGPTToolCall> {
+        const args: { amount: number, from: string, to: string } = JSON.parse(from.function?.arguments);
+        const result = await this.currencyApi.convertCurrency(args.amount, args.from, args.to);
+        return { id: from.id!, name: from.function?.name!, arguments: from.function?.arguments!, response: JSON.stringify({ result }) };
+    }
+
+    private buildInternalTextResult(text: string): InternalChatGPTResult {
+        return { type: InternalChatGPTResultType.Text, text };
+    }
+
+    private buildTextResponse(text: string, toolCalls: ChatGPTToolCall[] = []): ChatGPTResponse {
+        return { type: ChatGPTResponseType.Text, text, toolCalls };
     }
 }
