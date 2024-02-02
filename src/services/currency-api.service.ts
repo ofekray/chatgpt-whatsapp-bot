@@ -10,7 +10,7 @@ export class CurrencyApi {
 
     async convertCurrency(amount: number, from: string, to: string): Promise<number> {
         try {
-            const url = process.env.CURRENCY_API_URL!.replace("{from}", from).replace("{to}", to);
+            const url = process.env.CURRENCY_API_URL!.replace("{from}", from.toLowerCase()).replace("{to}", to.toLowerCase());
             const response: CurrencyResult = await got.get(url).json();
             this.logger.debug("Sucessfully retrieved currency conversion", { from, to, response });
 

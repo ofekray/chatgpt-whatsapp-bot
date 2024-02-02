@@ -1,5 +1,6 @@
 import { singleton } from "tsyringe";
 import OpenAI from "openai";
+import * as CurrencyCodes from "currency-codes";
 import { createReadStream } from "fs";
 import * as fs from "fs/promises";
 import * as path from 'path';
@@ -120,8 +121,8 @@ export class ChatGPTApi {
                             required: ["amount", "from", "to"],
                             properties: {
                                 amount: { type: "number", description: "The amount to convert" },
-                                from: { type: "string", description: "The currency code to convert from in ISO 4217 format" },
-                                to: { type: "string", description: "The currency code to convert to in ISO 4217 format" }
+                                from: { type: "string", enum: CurrencyCodes.codes(), description: "The currency code to convert from in ISO 4217 format" },
+                                to: { type: "string", enum: CurrencyCodes.codes(), description: "The currency code to convert to in ISO 4217 format" }
                             },
                         }
                     }
