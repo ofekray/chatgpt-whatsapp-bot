@@ -23,7 +23,7 @@ export class ChatGPTApi {
         });
     }
 
-    async transcribe(audioBuffer: Buffer): Promise<string> {
+    async transcribe(audioBuffer: ArrayBuffer): Promise<string> {
         let mp3AudioPath: string = "";
 
         try {

@@ -1,5 +1,5 @@
 
-import got from 'got';
+import ky from 'ky';
 import { WhatsappMessageTypesEnum } from "../types/whatsapp/whatsapp-enums.type.js";
 import { ImageMessageRequestBody, MessageRequestBody, TextMessageRequestBody } from "../types/whatsapp/whatsapp-messages.type.js";
 import { WhatsappMediaURLResponse } from '../types/whatsapp/whatsapp-media.type.js';
@@ -49,7 +49,7 @@ export class WhatsappApi {
         }
     }
 
-    async downloadMediaById(mediaId: string): Promise<Buffer | null> {
+    async downloadMediaById(mediaId: string): Promise<ArrayBuffer | null> {
         try {
             const mediaURLResponse = await this.retrieveMediaURLRequest(mediaId);
             const buffer = await this.downloadMedia(mediaURLResponse.url);
@@ -64,26 +64,26 @@ export class WhatsappApi {
     private async postMessageRequest<T extends MessageRequestBody<WhatsappMessageTypesEnum>>(body: T): Promise<void> {
         const url = `${process.env.WHATSAPP_API_BASE_URL}/${process.env.WHATSAPP_BUSINESS_NUMBER}/messages`;
         const headers = this.buildRequestHeaders();
-        const response = await got.post(url, { headers, json: body }).json();
+        const response = await ky.post(url, { headers, json: body }).json();
         this.logger.debug("Sucessfully sent message", { body, response });
     }
 
     private async retrieveMediaURLRequest(mediaId: string): Promise<WhatsappMediaURLResponse> {
         const url = `${process.env.WHATSAPP_API_BASE_URL}/${mediaId}`;
         const headers = this.buildRequestHeaders();
-        const response = await got.get(url, { headers }).json<WhatsappMediaURLResponse>();
+        const response = await ky.get(url, { headers }).json<WhatsappMediaURLResponse>();
         this.logger.debug("Sucessfully retrieved media url", { mediaId, response });
         return response;
     }
 
-    private async downloadMedia(url: string): Promise<Buffer> {
+    private async downloadMedia(url: string): Promise<ArrayBuffer> {
         const headers = this.buildRequestHeaders();
-        const response = await got.get(url, { headers }).buffer();
+        const response = await ky.get(url, { headers }).arrayBuffer();
         this.logger.debug("Sucessfully downloaded media", { url });
         return response;
     }
 
-    private buildRequestHeaders<T extends MessageRequestBody<WhatsappMessageTypesEnum>>() {
+    private buildRequestHeaders() {
         return {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${process.env.WHATSAPP_API_TOKEN}`

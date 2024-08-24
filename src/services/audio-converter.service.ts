@@ -9,13 +9,13 @@ import { singleton } from 'tsyringe';
 export class AudioConverter {
     constructor(private readonly logger: Logger) {}
     
-    async toMp3(audioBuffer: Buffer): Promise<string> {
+    async toMp3(audioBuffer: ArrayBuffer): Promise<string> {
         const tempDir = await fs.mkdtemp(path.join(await fs.realpath(os.tmpdir()), path.sep));
 
         try {
             const originalAudioPath = path.join(tempDir, "originalAudio");
             const mp3AudioPath = path.join(tempDir, `conversation.mp3`);
-            await fs.writeFile(originalAudioPath, audioBuffer);
+            await fs.writeFile(originalAudioPath, Buffer.from(audioBuffer));
             await this.transcodeAudio(originalAudioPath, mp3AudioPath, "mp3");
             this.logger.debug("Audio converted to mp3", { mp3AudioPath });
             return mp3AudioPath;
