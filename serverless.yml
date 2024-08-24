@@ -35,13 +35,13 @@ provider:
             - Fn::GetAtt:
                 - WhatsappMessageQueue
                 - Arn
-    - Effect: Allow
-      Action:
-        - s3:PutObject
-        - s3:GetObject
-      Resource:
-        - Fn::Sub: arn:aws:s3:::${WhatsappImagesBucket}
-        - Fn::Sub: arn:aws:s3:::${WhatsappImagesBucket}/*
+        - Effect: Allow
+          Action:
+            - s3:PutObject
+            - s3:GetObject
+          Resource:
+            - Fn::Sub: arn:aws:s3:::${WhatsappImagesBucket}
+            - Fn::Sub: arn:aws:s3:::${WhatsappImagesBucket}/*
 
 package:
     individually: true

@@ -17,20 +17,20 @@ export class Logger {
         });
     }
 
-    public info<T extends object>(message: string, additionInfo?: T): void {
-        this.log(LogLevel.Info, message, additionInfo);
+    public info<T extends object>(message: string, additionalInfo?: T): void {
+        this.log(LogLevel.Info, message, additionalInfo);
     }
 
-    public debug<T extends object>(message: string, additionInfo?: T): void {
-        this.log(LogLevel.Debug, message, additionInfo);
+    public debug<T extends object>(message: string, additionalInfo?: T): void {
+        this.log(LogLevel.Debug, message, additionalInfo);
     }
 
-    public warn<T extends object>(message: string, additionInfo?: T): void {
-        this.log(LogLevel.Warn, message, additionInfo);
+    public warn<T extends object>(message: string, additionalInfo?: T): void {
+        this.log(LogLevel.Warn, message, additionalInfo);
     }
 
-    public error<T extends object>(message: string, additionInfo?: T): void {
-        this.log(LogLevel.Error, message, additionInfo);
+    public error<T extends object>(message: string, additionalInfo?: T): void {
+        this.log(LogLevel.Error, message, additionalInfo);
     }
 
     private log<T extends object>(level: LogLevel, message: string, additionalInfo?: T): void {

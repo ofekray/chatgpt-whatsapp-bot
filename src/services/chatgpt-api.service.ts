@@ -49,7 +49,8 @@ export class ChatGPTApi {
                 }
                 return response?.data?.[0].url!
             };
-    
+
+            let runnerMessageCount = 0;
             const runner = this.openaiClient.beta.chat.completions
                 .runTools({
                     model: 'gpt-4o-mini',
@@ -89,7 +90,12 @@ export class ChatGPTApi {
                         },
                     ],
                 })
-                .on('message', message => newMessages.push(message));
+                .on('message', message => {
+                    runnerMessageCount++;
+                    if (runnerMessageCount > messages.length) {
+                        newMessages.push(this.buildValidMessage(message));
+                    }
+                });
     
             const content = await runner.finalContent();
             if (!content) {
@@ -101,9 +107,23 @@ export class ChatGPTApi {
             this.logger.error("Error getting text answer from OpenAI", { error });
 
             const content = "I'm sorry, I can't answer that question right now. Please try again later.";
-            newMessages.push({ role: "system", content });
+            newMessages.push({ role: "assistant", content });
             return { newMessages, content };
         }
+    }
+
+    private buildValidMessage(message: OpenAI.ChatCompletionMessageParam): OpenAI.ChatCompletionMessageParam {
+        // Resolve issues with empty message parts, for example empty tool_calls array that causes OpenAI API to fail
+
+        const validMessage = { ...message };
+        const keys: Array<keyof OpenAI.ChatCompletionMessageParam> = Object.keys(validMessage) as any;
+        for (const key of keys) {
+            if (!validMessage[key] || (Array.isArray(validMessage[key]) && !validMessage[key].length)) {
+                delete validMessage[key];
+            }
+        }
+
+        return validMessage;
     }
 
     private mapHistoryToChatMessages(messageHistory: HistoryChatMessage[]): OpenAI.ChatCompletionMessageParam[] {

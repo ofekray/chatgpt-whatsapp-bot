@@ -32,7 +32,8 @@ export class AudioConverter {
             ffmpeg()
                 .input(inputPath)
                 .outputFormat(outputFormat)
-                .on("error", (error) => {
+                .on("error", (error, stdout, stderr) => {
+                    this.logger.error("Error transcoding audio", { error, stdout, stderr });
                     reject(error);
                 })
                 .on("end", () => {
