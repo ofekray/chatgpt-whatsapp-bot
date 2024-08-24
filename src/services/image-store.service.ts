@@ -13,7 +13,7 @@ export class ImageStore {
         this.s3Client = new S3Client({});
     }
 
-    async uploadImage(image: ArrayBuffer, mimeType: string): Promise<string> {
+    async uploadImage(image: Buffer, mimeType: string): Promise<string> {
         const fileName = await this.putObjectInS3(mimeType, image);
         this.logger.debug("Image uploaded to S3", { fileName });
         const result = await this.generateTempDownloadUrl(fileName);
@@ -21,7 +21,7 @@ export class ImageStore {
         return result;
     }
 
-    private async putObjectInS3(mimeType: string, image: ArrayBuffer) {
+    private async putObjectInS3(mimeType: string, image: Buffer) {
         const extension = mime.extension(mimeType);
         if (!extension) {
             throw new Error("Invalid mime type");
@@ -31,7 +31,7 @@ export class ImageStore {
         await this.s3Client.send(new PutObjectCommand({
             Bucket: process.env.S3_BUCKET_NAME,
             Key: fileName,
-            Body: Buffer.from(image)
+            Body: image
         }));
         return fileName;
     }

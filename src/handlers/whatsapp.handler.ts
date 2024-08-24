@@ -131,7 +131,7 @@ export class WhatsappHandler {
             if (message?.type === WhatsappWebhookTypesEnum.Audio && message?.audio?.id) {
                 const audio = await this.whatsappApi.downloadMediaById(message.audio.id);
                 if (audio) {
-                    const result: ChatGPTAudioQuestion = { type: ChatGPTQuestionType.Audio, audio };
+                    const result: ChatGPTAudioQuestion = { type: ChatGPTQuestionType.Audio, audio, mimeType: message.audio.mime_type };
                     return result;
                 }
             }

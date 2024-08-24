@@ -15,12 +15,13 @@ export interface ChatGTPTextQuestion extends ChatGPTQuestion {
 
 export interface ChatGPTImageQuestion extends ChatGPTQuestion {
     type: ChatGPTQuestionType.Image;
-    image: ArrayBuffer;
+    image: Buffer;
     mimeType: string;
     text?: string;
 }
 
 export interface ChatGPTAudioQuestion extends ChatGPTQuestion {
     type: ChatGPTQuestionType.Audio;
-    audio: ArrayBuffer;
+    audio: Buffer;
+    mimeType: string;
 }

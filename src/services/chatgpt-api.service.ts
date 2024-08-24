@@ -160,7 +160,7 @@ export class ChatGPTApi {
     }
 
     private async convertAudioToPrompt(question: ChatGPTAudioQuestion): Promise<OpenAI.ChatCompletionMessageParam> {
-        const transcription = await this.transcribeAudio(question.audio);
+        const transcription = await this.transcribeAudio(question.audio, question.mimeType);
         return { role: "user", content: transcription };
     }
 
@@ -168,11 +168,11 @@ export class ChatGPTApi {
         return { role: "user", content: question.text };
     }
 
-    private async transcribeAudio(audioBuffer: ArrayBuffer): Promise<string> {
+    private async transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<string> {
         let mp3AudioPath: string = "";
 
         try {
-            mp3AudioPath = await this.audioConverter.toMp3(audioBuffer);
+            mp3AudioPath = await this.audioConverter.toMp3(audioBuffer, mimeType);
             if (!mp3AudioPath) {
                 return "";
             }
