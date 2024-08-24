@@ -18,6 +18,8 @@ provider:
         OPENAI_API_KEY: ${ssm:/openai-api-key}
         WHATSAPP_MESSAGE_QUEUE_URL:
             Ref: WhatsappMessageQueue
+        S3_BUCKET_NAME:
+            Ref: WhatsappImagesBucket
         HISTORY_MAX_COUNT: 5
         HISTORY_TTL_IN_MINUTES: 3
         REDIS_HOST: ${ssm:/redis-host}
@@ -33,6 +35,14 @@ provider:
             - Fn::GetAtt:
                 - WhatsappMessageQueue
                 - Arn
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+      Resource:
+        - Fn::Sub: arn:aws:s3:::${WhatsappImagesBucket}
+        - Fn::Sub: arn:aws:s3:::${WhatsappImagesBucket}/*
+
 package:
     individually: true
 
@@ -67,3 +77,23 @@ resources:
       Properties:
         QueueName: whatsapp-message-queue
         VisibilityTimeout: 300
+
+    WhatsappImagesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${ssm:/whatsapp-images-bucket-name}
+        PublicAccessBlockConfiguration:
+          BlockPublicAcls: true
+          IgnorePublicAcls: true
+          BlockPublicPolicy: true
+          RestrictPublicBuckets: true
+        AccessControl: Private
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: aws:kms
+        LifecycleConfiguration:
+          Rules:
+          - Id: TemporaryStorageRule
+            Status: Enabled
+            ExpirationInDays: 1

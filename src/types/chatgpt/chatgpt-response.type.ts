@@ -1,19 +1,6 @@
-import { ChatGPTToolCall } from "./chatgpt-tool-call.types.js";
+import OpenAI from "openai";
 
-export enum ChatGPTResponseType {
-    Text = "text",
-    Image = "image"
+export interface ChatGPTResponse {
+    newMessages: OpenAI.ChatCompletionMessageParam[];
+    content: string;
 }
-
-export interface ChatGPTTextResponse {
-    type: ChatGPTResponseType.Text;
-    toolCalls: ChatGPTToolCall[];
-    text: string;
-}
-
-export interface ChatGPTImageResponse {
-    type: ChatGPTResponseType.Image;
-    url: string;
-}
-
-export type ChatGPTResponse = ChatGPTTextResponse | ChatGPTImageResponse;

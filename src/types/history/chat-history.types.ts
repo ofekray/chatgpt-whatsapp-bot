@@ -1,7 +1,3 @@
-import { ChatGPTToolCall } from "../chatgpt/chatgpt-tool-call.types.js";
+import OpenAI from "openai";
 
-export interface HistoryChatMessage {
-    question: string;
-    toolCalls: ChatGPTToolCall[];
-    answer: string;
-}
+export type HistoryChatMessage = OpenAI.ChatCompletionMessageParam[];

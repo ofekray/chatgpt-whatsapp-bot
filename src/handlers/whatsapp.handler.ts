@@ -9,8 +9,8 @@ import { WhatsappWebhookTypesEnum } from "../types/whatsapp/whatsapp-enums.type.
 import { ChatGPTApi } from "../services/chatgpt-api.service.js";
 import { MessageReceivedPublisher } from "../services/message-recevied-publisher.service.js";
 import { ChatHistoryService } from "../services/chat-history.service.js";
-import { ChatGPTResponseType } from "../types/chatgpt/chatgpt-response.type.js";
 import { singleton } from "tsyringe";
+import { ChatGPTAudioQuestion, ChatGPTImageQuestion, ChatGPTQuestion, ChatGPTQuestionType, ChatGTPTextQuestion } from "../types/chatgpt/chatgpt-question.type.js";
 
 @singleton()
 export class WhatsappHandler {
@@ -67,21 +67,18 @@ export class WhatsappHandler {
             for (const record of event.Records) {
                 const whatsappWebhook: WhatsappWebhookObject = JSON.parse(record.body);
                 this.logger.debug("Webhook received", whatsappWebhook);
-                const { messagesBySender, nameBySender } = await this.extractMessages(whatsappWebhook);
-                this.logger.debug("Messages grouped", { messagesBySender: Array.from(messagesBySender.entries()) });
+                const { questionsBySender, nameBySender } = await this.extractMessages(whatsappWebhook);
+                this.logger.debug("Messages grouped", { messagesBySender: Array.from(questionsBySender.entries()) });
         
-                for (const [sender, messages] of messagesBySender) {
+                for (const [sender, questions] of questionsBySender) {
                     const name = nameBySender.get(sender) ?? "Unknown";
-                    const question = messages.join("\n");
                     const history = await this.chatHistoryService.get(sender);
-                    const answer = await this.chatGPTApi.ask(name, question, history);
-                    if (answer.type === ChatGPTResponseType.Image) {
-                        await this.whatsappApi.postImageMessage(sender, answer.url);
-                    }
-                    else {
-                        await this.whatsappApi.postTextMessage(sender, answer.text);
-                        await this.chatHistoryService.add(sender, { question, answer: answer.text, toolCalls: answer.toolCalls });
-                    }
+                    const answer = await this.chatGPTApi.ask(name, questions, history);
+                    // if (answer.type === ChatGPTResponseType.Image) {
+                    //     await this.whatsappApi.postImageMessage(sender, answer.url);
+                    // }
+                    await this.whatsappApi.postTextMessage(sender, answer.content);
+                    await this.chatHistoryService.add(sender, answer.newMessages);
                 }
             }
         }
@@ -91,7 +88,7 @@ export class WhatsappHandler {
     }
 
     private async extractMessages(whatsappWebhook: WhatsappWebhookObject) {
-        const messagesBySender: Map<string, string[]> = new Map();
+        const questionsBySender: Map<string, ChatGPTQuestion[]> = new Map();
         const nameBySender: Map<string, string> = new Map();
 
         for (const entry of whatsappWebhook?.entry ?? []) {
@@ -101,15 +98,15 @@ export class WhatsappHandler {
                         continue;
                     }
 
-                    const messageText = await this.extractMessageText(message);
-                    if (!messageText) {
+                    const question = await this.extractQuestion(message);
+                    if (!question) {
                         continue;
                     }
 
-                    if (!messagesBySender.has(message.from)) {
-                        messagesBySender.set(message.from, []);
+                    if (!questionsBySender.has(message.from)) {
+                        questionsBySender.set(message.from, []);
                     }
-                    messagesBySender.get(message.from)!.push(messageText);
+                    questionsBySender.get(message.from)!.push(question);
 
                     if (!nameBySender.has(message.from)) {
                         const name = change.value.contacts.find(x => x.wa_id === message.from)?.profile?.name;
@@ -121,20 +118,29 @@ export class WhatsappHandler {
             }
         }
 
-        return { messagesBySender, nameBySender };
+        return { questionsBySender, nameBySender };
     }
 
-    private async extractMessageText(message: WhatsappMessagesObject): Promise<string | undefined> {
+    private async extractQuestion(message: WhatsappMessagesObject): Promise<ChatGPTQuestion | undefined> {
         try {
-            if (message?.type === WhatsappWebhookTypesEnum.Text) {
-                return message?.text?.body;
+            if (message?.type === WhatsappWebhookTypesEnum.Text && message?.text?.body) {
+                const result: ChatGTPTextQuestion = { type: ChatGPTQuestionType.Text, text: message?.text?.body };
+                return result;
             }
 
             if (message?.type === WhatsappWebhookTypesEnum.Audio && message?.audio?.id) {
                 const audio = await this.whatsappApi.downloadMediaById(message.audio.id);
                 if (audio) {
-                    const transcription = await this.chatGPTApi.transcribe(audio);
-                    return transcription;
+                    const result: ChatGPTAudioQuestion = { type: ChatGPTQuestionType.Audio, audio };
+                    return result;
+                }
+            }
+
+            if (message?.type === WhatsappWebhookTypesEnum.Image && message?.image?.id) {
+                const image = await this.whatsappApi.downloadMediaById(message.image.id);
+                if (image) {
+                    const result: ChatGPTImageQuestion = { type: ChatGPTQuestionType.Image, image, mimeType: message.image.mime_type, text: message.image.caption };
+                    return result;
                 }
             }
 
