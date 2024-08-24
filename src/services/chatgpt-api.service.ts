@@ -23,7 +23,7 @@ export class ChatGPTApi {
         });
     }
 
-    async transcribe(audioBuffer: Buffer): Promise<string> {
+    async transcribe(audioBuffer: ArrayBuffer): Promise<string> {
         let mp3AudioPath: string = "";
 
         try {
@@ -103,7 +103,7 @@ export class ChatGPTApi {
 
     private createChatCompletionRequest(name: string, question: string, messageHistory: HistoryChatMessage[]): OpenAI.ChatCompletionCreateParamsNonStreaming {
         return {
-            model: "gpt-3.5-turbo",
+            model: "gpt-4o-mini",
             messages: [
                 { role: "system", content: "You are ChatGPT a helpful assistant" },
                 { role: "system", content: `The name of the user is ${name}` },
