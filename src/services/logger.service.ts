@@ -25,6 +25,10 @@ export class Logger {
         this.log(LogLevel.Debug, message, additionalInfo);
     }
 
+    public trace<T extends object>(message: string, additionalInfo?: T): void {
+        this.log(LogLevel.Trace, message, additionalInfo);
+    }
+
     public warn<T extends object>(message: string, additionalInfo?: T): void {
         this.log(LogLevel.Warn, message, additionalInfo);
     }

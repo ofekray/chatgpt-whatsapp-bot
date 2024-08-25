@@ -23,5 +23,4 @@ export interface ChatGPTImageQuestion extends ChatGPTQuestion {
 export interface ChatGPTAudioQuestion extends ChatGPTQuestion {
     type: ChatGPTQuestionType.Audio;
     audio: Buffer;
-    mimeType: string;
 }

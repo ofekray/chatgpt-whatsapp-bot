@@ -1,11 +1,11 @@
 import { singleton } from "tsyringe";
 import OpenAI from "openai";
 import * as CurrencyCodes from "currency-codes";
-import { createReadStream } from "fs";
+import { createReadStream } from "fs"
 import * as fs from "fs/promises";
+import * as os from 'os';
 import * as path from 'path';
 import { HistoryChatMessage } from "../types/history/chat-history.types.js";
-import { AudioConverter } from "./audio-converter.service.js";
 import { Logger } from "./logger.service.js";
 import { CurrencyApi } from "./currency-api.service.js";
 import { ChatGPTAudioQuestion, ChatGPTImageQuestion, ChatGPTQuestion, ChatGPTQuestionType, ChatGTPTextQuestion } from "../types/chatgpt/chatgpt-question.type.js";
@@ -16,7 +16,7 @@ import { ChatGPTResponse } from "../types/chatgpt/chatgpt-response.type.js";
 export class ChatGPTApi {
     private readonly openaiClient: OpenAI;
 
-    constructor(private readonly audioConverter: AudioConverter, private readonly imageStore: ImageStore, private readonly currencyApi: CurrencyApi, private readonly logger: Logger) {
+    constructor(private readonly imageStore: ImageStore, private readonly currencyApi: CurrencyApi, private readonly logger: Logger) {
         this.openaiClient = new OpenAI({
             organization: process.env.OPENAI_ORG,
             apiKey: process.env.OPENAI_API_KEY,
@@ -160,7 +160,7 @@ export class ChatGPTApi {
     }
 
     private async convertAudioToPrompt(question: ChatGPTAudioQuestion): Promise<OpenAI.ChatCompletionMessageParam> {
-        const transcription = await this.transcribeAudio(question.audio, question.mimeType);
+        const transcription = await this.transcribeAudio(question.audio);
         return { role: "user", content: transcription };
     }
 
@@ -168,16 +168,15 @@ export class ChatGPTApi {
         return { role: "user", content: question.text };
     }
 
-    private async transcribeAudio(audioBuffer: Buffer, mimeType: string): Promise<string> {
-        let mp3AudioPath: string = "";
+    private async transcribeAudio(audioBuffer: Buffer): Promise<string> {
+        let tempDir: string = "";
 
         try {
-            mp3AudioPath = await this.audioConverter.toMp3(audioBuffer, mimeType);
-            if (!mp3AudioPath) {
-                return "";
-            }
-            const audioReadStream = createReadStream(mp3AudioPath);
-            const transcription = await this.openaiClient.audio.transcriptions.create({ file: audioReadStream, model: "whisper-1" });
+            tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "whatsapp-audio"));
+            const audioPath = path.join(tempDir, `audio.ogg`);
+            await fs.writeFile(audioPath, audioBuffer);
+            const file = await createReadStream(audioPath);
+            const transcription = await this.openaiClient.audio.transcriptions.create({ file, model: "whisper-1" }, {});
             const text = transcription?.text;
             this.logger.debug("Transcription received from OpenAI", { text });
             return text;
@@ -187,8 +186,8 @@ export class ChatGPTApi {
             return "";
         }
         finally {
-            if (mp3AudioPath) {
-                await fs.rm(path.dirname(mp3AudioPath), { recursive: true });
+            if (tempDir) {
+                await fs.rm(tempDir, { recursive: true });
             }
         }
     }

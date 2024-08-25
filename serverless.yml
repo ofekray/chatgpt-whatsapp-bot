@@ -7,7 +7,6 @@ provider:
     memorySize: 1024
     environment:
         LOG_LEVEL: debug
-        FFMPEG_PATH: /opt/ffmpeg/ffmpeg
         CURRENCY_API_URL: ${ssm:/currency-api-url}
         WHATSAPP_WEBHOOK_VERIFY_TOKEN: ${ssm:/whatsapp-webhook-verify-token}
         WHATSAPP_FACEBOOK_APP_SECRET: ${ssm:/whatsapp-facebook-app-secret}
@@ -46,10 +45,6 @@ provider:
 package:
     individually: true
 
-layers:
-    ffmpeg:
-        path: layer
-
 functions:
     webhookHandler:
         handler: src/handler.webhookHandler
@@ -64,8 +59,6 @@ functions:
                 Fn::GetAtt:
                 - WhatsappMessageQueue
                 - Arn
-        layers:
-        - Ref: FfmpegLambdaLayer
 
 plugins:
     - serverless-plugin-typescript

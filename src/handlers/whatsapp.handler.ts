@@ -68,7 +68,7 @@ export class WhatsappHandler {
                 const whatsappWebhook: WhatsappWebhookObject = JSON.parse(record.body);
                 this.logger.debug("Webhook received", whatsappWebhook);
                 const { questionsBySender, nameBySender } = await this.extractMessages(whatsappWebhook);
-                this.logger.debug("Messages grouped", { messagesBySender: Array.from(questionsBySender.entries()) });
+                this.logger.trace("Messages grouped", { messagesBySender: Array.from(questionsBySender.entries()) });
         
                 for (const [sender, questions] of questionsBySender) {
                     const name = nameBySender.get(sender) ?? "Unknown";
@@ -131,7 +131,7 @@ export class WhatsappHandler {
             if (message?.type === WhatsappWebhookTypesEnum.Audio && message?.audio?.id) {
                 const audio = await this.whatsappApi.downloadMediaById(message.audio.id);
                 if (audio) {
-                    const result: ChatGPTAudioQuestion = { type: ChatGPTQuestionType.Audio, audio, mimeType: message.audio.mime_type };
+                    const result: ChatGPTAudioQuestion = { type: ChatGPTQuestionType.Audio, audio };
                     return result;
                 }
             }
