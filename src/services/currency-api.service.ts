@@ -1,5 +1,5 @@
 import { singleton } from "tsyringe";
-import got from 'got';
+import ky from 'ky';
 import { Logger } from "./logger.service.js";
 import { CurrencyResult } from "../types/currency-api/currency-result.types.js";
 import { DecimalMathService } from "./decimal-math.service.js";
@@ -13,7 +13,7 @@ export class CurrencyApi {
             const fromLowerCase = from.toLowerCase();
             const toLowerCase = to.toLowerCase();
             const url = process.env.CURRENCY_API_URL!.replace("{from}", fromLowerCase);
-            const response: CurrencyResult = await got.get(url).json();
+            const response: CurrencyResult = await ky.get(url).json();
             const unitValue = response[fromLowerCase][toLowerCase];
             this.logger.debug("Sucessfully retrieved currency conversion", { from: fromLowerCase, to: toLowerCase, unitValue });
 
