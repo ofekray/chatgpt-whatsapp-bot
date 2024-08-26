@@ -10,7 +10,8 @@ import { Logger } from "./logger.service.js";
 import { CurrencyApi } from "./currency-api.service.js";
 import { ChatGPTAudioQuestion, ChatGPTImageQuestion, ChatGPTQuestion, ChatGPTQuestionType, ChatGTPTextQuestion } from "../types/chatgpt/chatgpt-question.type.js";
 import { ImageStore } from "./image-store.service.js";
-import { ChatGPTResponse } from "../types/chatgpt/chatgpt-response.type.js";
+import { ChatGPTResponse, ChatGPTResponseType } from "../types/chatgpt/chatgpt-response.type.js";
+import { Chat } from "openai/resources/index.mjs";
 
 @singleton()
 export class ChatGPTApi {
@@ -41,13 +42,16 @@ export class ChatGPTApi {
             const convert_currency = ({ amount, from, to }: { amount: number, from: string, to: string }) => {
                 return this.currencyApi.convertCurrency(amount, from, to);
             };
-    
+
+            
+            let generatedImage: string = "";
             const generate_image = async ({ prompt }: { prompt: string }) => {
                 const response = await this.openaiClient.images.generate({ prompt, n: 1, size: "512x512" });
                 if (!response?.data?.length || !response?.data?.[0].url) {
                     this.logger.error("Error generating image from OpenAI", { data: response?.data });
                 }
-                return response?.data?.[0].url!
+                generatedImage = response?.data?.[0].url!
+                return generatedImage;
             };
 
             let runnerMessageCount = 0;
@@ -97,18 +101,24 @@ export class ChatGPTApi {
                     }
                 });
     
-            const content = await runner.finalContent();
+            let content = await runner.finalContent();
+            let responseType = ChatGPTResponseType.Text;
             if (!content) {
                 throw new Error("No content received from OpenAI");
             }
-            return { newMessages, content };
+            if (generatedImage) {
+                content = generatedImage;
+                responseType = ChatGPTResponseType.Image;
+            }
+
+            return { newMessages, content, type: responseType };
         }
         catch (error) {
             this.logger.error("Error getting text answer from OpenAI", { error });
 
             const content = "I'm sorry, I can't answer that question right now. Please try again later.";
             newMessages.push({ role: "assistant", content });
-            return { newMessages, content };
+            return { newMessages, content, type: ChatGPTResponseType.Text };
         }
     }
 

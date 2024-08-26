@@ -85,7 +85,7 @@ export class WhatsappApi {
 
     private buildRequestHeaders() {
         return {
-            //"Content-Type": "application/json",
+            "Content-Type": "application/json",
             "Authorization": `Bearer ${process.env.WHATSAPP_API_TOKEN}`
         }
     }

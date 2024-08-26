@@ -11,6 +11,7 @@ import { MessageReceivedPublisher } from "../services/message-recevied-publisher
 import { ChatHistoryService } from "../services/chat-history.service.js";
 import { singleton } from "tsyringe";
 import { ChatGPTAudioQuestion, ChatGPTImageQuestion, ChatGPTQuestion, ChatGPTQuestionType, ChatGTPTextQuestion } from "../types/chatgpt/chatgpt-question.type.js";
+import { ChatGPTResponseType } from "../types/chatgpt/chatgpt-response.type.js";
 
 @singleton()
 export class WhatsappHandler {
@@ -74,10 +75,12 @@ export class WhatsappHandler {
                     const name = nameBySender.get(sender) ?? "Unknown";
                     const history = await this.chatHistoryService.get(sender);
                     const answer = await this.chatGPTApi.ask(name, questions, history);
-                    // if (answer.type === ChatGPTResponseType.Image) {
-                    //     await this.whatsappApi.postImageMessage(sender, answer.url);
-                    // }
-                    await this.whatsappApi.postTextMessage(sender, answer.content);
+                    if (answer.type === ChatGPTResponseType.Image) {
+                        await this.whatsappApi.postImageMessage(sender, answer.content);
+                    }
+                    else {
+                        await this.whatsappApi.postTextMessage(sender, answer.content);
+                    }
                     await this.chatHistoryService.add(sender, answer.newMessages);
                 }
             }
