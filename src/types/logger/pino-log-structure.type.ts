@@ -2,7 +2,8 @@ export enum LogLevel {
     Info = "info",
     Warn = "warn",
     Error = "error",
-    Debug = "debug"
+    Debug = "debug",
+    Trace = "trace"
 }
 
 export interface LogStructure {
