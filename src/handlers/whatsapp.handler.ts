@@ -74,7 +74,7 @@ export class WhatsappHandler {
                 for (const [sender, questions] of questionsBySender) {
                     const name = nameBySender.get(sender) ?? "Unknown";
                     const history = await this.chatHistoryService.get(sender);
-                    const answer = await this.chatGPTApi.ask(name, questions, history);
+                    const answer = await this.chatGPTApi.ask(sender, name, questions, history);
                     if (answer.type === ChatGPTResponseType.Image) {
                         await this.whatsappApi.postImageMessage(sender, answer.content);
                     }
