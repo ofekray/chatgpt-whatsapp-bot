@@ -1,3 +1,4 @@
+import { TZDate } from "@date-fns/tz";
 import { singleton } from "tsyringe";
 import OpenAI from "openai";
 import * as CurrencyCodes from "currency-codes";
@@ -12,6 +13,7 @@ import { ChatGPTAudioQuestion, ChatGPTImageQuestion, ChatGPTQuestion, ChatGPTQue
 import { ImageStore } from "./image-store.service.js";
 import { ChatGPTResponse, ChatGPTResponseType } from "../types/chatgpt/chatgpt-response.type.js";
 import { Chat } from "openai/resources/index.mjs";
+import phoneToTimezone from "phone-to-timezone";
 
 @singleton()
 export class ChatGPTApi {
@@ -24,7 +26,7 @@ export class ChatGPTApi {
         });
     }
 
-    async ask(name: string, questions: ChatGPTQuestion[], messageHistory: HistoryChatMessage[]): Promise<ChatGPTResponse> {
+    async ask(phone: string, name: string, questions: ChatGPTQuestion[], messageHistory: HistoryChatMessage[]): Promise<ChatGPTResponse> {
         const newMessages: OpenAI.ChatCompletionMessageParam[] = [];
         for (const question of questions) {
             const questionChatMessage = await this.mapQuestionToChatMessage(question);
@@ -35,6 +37,7 @@ export class ChatGPTApi {
             const messages: OpenAI.ChatCompletionMessageParam[] = [
                 { role: "system", content: "You are ChatGPT a helpful assistant" },
                 { role: "system", content: `The name of the user is ${name}` },
+                { role: "system", content: `The user local time iz ${this.getUserLocalDate(phone)}` },
                 ...this.mapHistoryToChatMessages(messageHistory),
                 ...newMessages
             ];
@@ -200,5 +203,15 @@ export class ChatGPTApi {
                 await fs.rm(tempDir, { recursive: true });
             }
         }
+    }
+
+    private getUserLocalDate(phone: string) {
+        const now = new TZDate();
+        const timezones = phoneToTimezone(phone);
+        if (timezones.length === 0) {
+            return now.toISOString();
+        }
+        const timezone = timezones[0]; // Use the first timezone
+        return now.withTimeZone(timezone).toISOString();
     }
 }
