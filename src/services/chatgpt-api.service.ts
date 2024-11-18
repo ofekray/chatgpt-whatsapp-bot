@@ -1,3 +1,4 @@
+import { format } from 'date-fns/format';
 import { TZDate } from "@date-fns/tz";
 import { singleton } from "tsyringe";
 import OpenAI from "openai";
@@ -34,10 +35,12 @@ export class ChatGPTApi {
         }
 
         try {
+            const userLocalDate = this.getUserLocalDate(phone);
             const messages: OpenAI.ChatCompletionMessageParam[] = [
                 { role: "system", content: "You are ChatGPT a helpful assistant" },
                 { role: "system", content: `The name of the user is ${name}` },
-                { role: "system", content: `The user local time iz ${this.getUserLocalDate(phone)}` },
+                { role: "system", content: `The user local time is ${userLocalDate.toISOString()}` },
+                { role: "system", content: `The user local day ${format(userLocalDate, 'EEEE')}` },
                 ...this.mapHistoryToChatMessages(messageHistory),
                 ...newMessages
             ];
@@ -209,9 +212,9 @@ export class ChatGPTApi {
         const now = new TZDate();
         const timezones = phoneToTimezone(phone);
         if (timezones.length === 0) {
-            return now.toISOString();
+            return now;
         }
         const timezone = timezones[0]; // Use the first timezone
-        return now.withTimeZone(timezone).toISOString();
+        return now.withTimeZone(timezone);
     }
 }
